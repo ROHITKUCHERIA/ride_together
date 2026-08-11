@@ -27,6 +27,8 @@ npm run dev       # start dev server
 npm run build     # type-check + production build
 npm run lint      # oxlint
 npm run preview   # preview the production build
+
+npm run dev -- --host 192.168.13.195
 ```
 
 ## Structure
