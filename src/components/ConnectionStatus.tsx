@@ -6,12 +6,19 @@ interface ConnectionStatusProps {
   state: ConnectionState
 }
 
+const STATE_META = {
+  connected: { dot: 'bg-live', text: 'Live', border: 'border-white/10 bg-night/40' },
+  reconnecting: { dot: 'animate-pulse bg-sunset', text: 'Reconnecting…', border: 'border-sunset/40 bg-night/60' },
+  offline: { dot: 'animate-pulse bg-road', text: 'Offline', border: 'border-road/40 bg-night/60' },
+} as const
+
 export default function ConnectionStatus({ state }: ConnectionStatusProps) {
   const isMobile = useIsMobile()
-  const reconnecting = state === 'reconnecting'
+  const meta = STATE_META[state]
+  const active = state !== 'connected'
 
   if (isMobile) {
-    if (!reconnecting) return null
+    if (!active) return null
     return (
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -20,24 +27,21 @@ export default function ConnectionStatus({ state }: ConnectionStatusProps) {
         role="status"
       >
         <span className="size-2 shrink-0 animate-pulse rounded-full bg-sunset" aria-hidden="true" />
-        <p className="text-xs font-medium text-bone">Connection lost</p>
-        <span className="ml-auto text-[10px] uppercase tracking-wider text-mist/60">Reconnecting...</span>
+        <p className="text-xs font-medium text-bone">
+          {state === 'offline' ? 'Connection lost' : 'Connection lost'}
+        </p>
+        <span className="ml-auto text-[10px] uppercase tracking-wider text-mist/60">
+          {state === 'offline' ? 'Offline' : 'Reconnecting...'}
+        </span>
       </motion.div>
     )
   }
 
   return (
     <div className="pointer-events-none fixed bottom-5 right-5 z-40">
-      <div
-        className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-2 backdrop-blur-md ${
-          reconnecting ? 'border-sunset/40 bg-night/60' : 'border-white/10 bg-night/40'
-        }`}
-        role="status"
-      >
-        <span className={`size-1.5 rounded-full ${reconnecting ? 'animate-pulse bg-sunset' : 'bg-live'}`} aria-hidden="true" />
-        <span className="text-[11px] font-medium tracking-wide text-bone/75">
-          {reconnecting ? 'Reconnecting…' : 'Live'}
-        </span>
+      <div className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-2 backdrop-blur-md ${meta.border}`} role="status">
+        <span className={`size-1.5 rounded-full ${meta.dot}`} aria-hidden="true" />
+        <span className="text-[11px] font-medium tracking-wide text-bone/75">{meta.text}</span>
       </div>
     </div>
   )

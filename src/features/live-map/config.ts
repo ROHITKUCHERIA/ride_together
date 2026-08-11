@@ -1,0 +1,37 @@
+function num(env: string | undefined, fallback: number): number {
+  if (env === undefined || env === '') return fallback
+  const n = Number(env)
+  return Number.isFinite(n) ? n : fallback
+}
+
+/**
+ * Client-side GPS throttle. NOTE: this is NOT a security mechanism —
+ * the future backend must enforce its own rate limiting on location events.
+ */
+export const LOCATION_UPDATE_INTERVAL_MS = num(import.meta.env.VITE_LOCATION_UPDATE_INTERVAL_MS, 5000)
+export const MIN_DISTANCE_METERS = num(import.meta.env.VITE_MIN_DISTANCE_METERS, 10)
+export const MIN_ACCURACY_METERS = num(import.meta.env.VITE_MIN_ACCURACY_METERS, 100)
+
+export const GPS_TIMEOUT_MS = num(import.meta.env.VITE_GPS_TIMEOUT_MS, 15000)
+export const GPS_MAXIMUM_AGE_MS = num(import.meta.env.VITE_GPS_MAXIMUM_AGE_MS, 0)
+
+/** 0–10s LIVE · 10–30s DELAYED · 30–60s STALE · >60s OFFLINE */
+export const PRESENCE_THRESHOLDS_MS = {
+  live: num(import.meta.env.VITE_PRESENCE_LIVE_MS, 10_000),
+  delayed: num(import.meta.env.VITE_PRESENCE_DELAYED_MS, 30_000),
+  stale: num(import.meta.env.VITE_PRESENCE_STALE_MS, 60_000),
+}
+
+export const GROUP_SPREADING_THRESHOLD_METERS = num(import.meta.env.VITE_GROUP_SPREADING_THRESHOLD_METERS, 2000)
+export const GROUP_SPLIT_THRESHOLD_METERS = num(import.meta.env.VITE_GROUP_SPLIT_THRESHOLD_METERS, 3000)
+
+export const MOCK_RIDER_TICK_MS = num(import.meta.env.VITE_MOCK_RIDER_TICK_MS, 2000)
+export const MOCK_REALTIME_CONNECT_DELAY_MS = 400
+export const MOCK_RECONNECT_AT_MS = 12_000
+export const MOCK_RECONNECT_DURATION_MS = 3000
+
+export const FOLLOW_ANIMATION_MS = 800
+export const DEFAULT_MAP_CENTER: [number, number] = [15.9, 73.97]
+export const DEFAULT_MAP_ZOOM = 11
+export const SINGLE_RIDER_ZOOM = 14
+export const FIT_GROUP_MAX_ZOOM = 22

@@ -56,6 +56,6 @@ export interface TripInfo {
 
 export type DrawerKind = 'playlists' | 'riders' | 'tripinfo' | null
 
-export type ConnectionState = 'connected' | 'reconnecting'
+export type ConnectionState = 'connected' | 'reconnecting' | 'offline'
 
 export type GpsState = 'tracking' | 'unavailable'

@@ -1,0 +1,84 @@
+import type { GpsError, LocationUpdate } from '../types'
+import { gpsStore } from '../state/gpsStore'
+import { riderStore } from '../state/riderStore'
+import { connectionStore } from '../state/connectionStore'
+import type { RealtimeService } from './RealtimeService'
+import { MockRealtimeService } from './MockRealtimeService'
+import { trip } from '../../../data/mockData'
+
+/**
+ * Owns the live map services. In production this is where the Socket.IO /
+ * NestJS / PostGIS transport would be swapped in behind the same interface.
+ * The frontend never trusts userId/tripId from inbound payloads — the real
+ * userId is stamped here from trusted app state.
+ */
+class RideController {
+  private realtime: RealtimeService | null = null
+  private stopLocation: (() => void) | null = null
+  private meUserId = ''
+
+  init(meUserId = ''): void {
+    this.meUserId = meUserId
+    if (this.realtime) return
+    this.realtime = new MockRealtimeService()
+
+    this.realtime.onConnectionState((state) => connectionStore.set(state))
+    this.realtime.onRiderLocations((riders) => {
+      riderStore.setRiders(riders)
+      gpsStore.setAccuracy(riders.find((r) => r.isMe)?.accuracy ?? null)
+    })
+
+    this.realtime.connect()
+  }
+
+  startSharingLocation(): void {
+    if (!this.realtime) return
+    gpsStore.setMode('starting')
+    this.stopLocation = this.realtime.locationService.start({
+      onUpdate: (update) => {
+        if (!this.realtime) return
+        // userId/tripId come from trusted app state, never from the payload.
+        const trusted: LocationUpdate = {
+          ...update,
+          userId: this.meUserId,
+          tripId: trip.id,
+        }
+        gpsStore.setMode('active')
+        gpsStore.setError(null)
+        this.realtime.publishLocation(trusted)
+      },
+      onError: (error: GpsError) => {
+        if (error.kind === 'network') {
+          gpsStore.setMode('paused')
+          gpsStore.setError(error.message)
+          return
+        }
+        if (error.kind === 'permission_denied') {
+          gpsStore.setMode('denied')
+        } else if (error.kind === 'unsupported') {
+          gpsStore.setMode('unsupported')
+        } else {
+          gpsStore.setMode('error')
+        }
+        gpsStore.setError(error.message)
+      },
+    })
+  }
+
+  pauseLocationSharing(): void {
+    this.stopLocation?.()
+    this.stopLocation = null
+    gpsStore.setMode('paused')
+  }
+
+  dispose(): void {
+    this.pauseLocationSharing()
+    this.realtime?.disconnect()
+    this.realtime = null
+    riderStore.clear()
+    connectionStore.set('connected')
+    gpsStore.setMode('inactive')
+  }
+}
+
+export const rideController = new RideController()

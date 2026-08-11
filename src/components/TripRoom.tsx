@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import ConnectionStatus from './ConnectionStatus'
 import CursorSpotlight from './CursorSpotlight'
 import FilmGrain from './FilmGrain'
 import FloatingActions from './FloatingActions'
 import GpsStatus from './GpsStatus'
-import LiveMap from './LiveMap'
 import LoadingScreen from './LoadingScreen'
 import MobileBottomNav from './MobileBottomNav'
 import MusicPlayer from './MusicPlayer'
@@ -18,6 +17,10 @@ import TripNavigation from './TripNavigation'
 import { trip as mockTrip } from '../data/mockData'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import type { ConnectionState, DrawerKind, GpsState, Playlist, Rider } from '../types'
+
+const GroupRideMap = lazy(() =>
+  import('../features/live-map/components/GroupRideMap').then((m) => ({ default: m.default })),
+)
 
 export default function TripRoom() {
   const isMobile = useIsMobile()
@@ -161,6 +164,7 @@ export default function TripRoom() {
       />
 
       <MobileBottomNav
+        active={mapOpen ? 'map' : undefined}
         onOpenMap={() => setMapOpen(true)}
         onOpenMusic={() => setMusicExpanded(true)}
         onOpenRiders={() => openDrawer('riders')}
@@ -172,15 +176,24 @@ export default function TripRoom() {
 
       <AnimatePresence>
         {mapOpen ? (
-          <LiveMap
-            key="livemap"
-            open={mapOpen}
-            onClose={() => setMapOpen(false)}
-            riders={riders}
-            connection={connection}
-            gps={gps}
-            onEnableGps={() => setGps('tracking')}
-          />
+          <Suspense fallback={null}>
+            <GroupRideMap
+              key="groupridemap"
+              onClose={() => setMapOpen(false)}
+              onExitToMusic={() => {
+                setMapOpen(false)
+                setMusicExpanded(true)
+              }}
+              onExitToRiders={() => {
+                setMapOpen(false)
+                openDrawer('riders')
+              }}
+              onExitToTripInfo={() => {
+                setMapOpen(false)
+                openDrawer('tripinfo')
+              }}
+            />
+          </Suspense>
         ) : null}
       </AnimatePresence>
 
