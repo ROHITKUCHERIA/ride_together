@@ -1,0 +1,175 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-ui: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-night: #0a0a0c;
+  --color-charcoal: #16161a;
+  --color-ash: #232327;
+  --color-bone: #f4efe7;
+  --color-mist: #b8b4ac;
+  --color-ember: #ff6b2c;
+  --color-sunset: #ffb14d;
+  --color-road: #e0242f;
+  --color-live: #3ddc84;
+  --color-dusk: #1b1730;
+
+  --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-night);
+  color: var(--color-bone);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+@media (max-width: 640px) {
+  body {
+    overflow-y: auto;
+  }
+}
+
+button {
+  font-family: inherit;
+}
+
+::selection {
+  background: rgba(255, 107, 44, 0.35);
+  color: #fff;
+}
+
+/* ---------- scrollbars (drawers) ---------- */
+.rt-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+.rt-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.rt-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+/* ---------- film grain ---------- */
+.rt-grain {
+  position: fixed;
+  inset: -100%;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: rt-grain-shift 1.4s steps(3) infinite;
+}
+
+@keyframes rt-grain-shift {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-2%, 1%); }
+  66% { transform: translate(1%, -2%); }
+  100% { transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rt-grain {
+    animation: none;
+  }
+}
+
+/* ---------- live pulse ---------- */
+@keyframes rt-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(61, 220, 132, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(61, 220, 132, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(61, 220, 132, 0);
+  }
+}
+.rt-live-dot {
+  animation: rt-pulse 2.2s var(--ease-cinematic) infinite;
+}
+
+/* ---------- equalizer bars ---------- */
+@keyframes rt-eq {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+.rt-eq-bar {
+  transform-origin: bottom;
+  animation: rt-eq 1.1s ease-in-out infinite;
+}
+
+/* ---------- hero background zoom ---------- */
+@keyframes rt-kenburns {
+  0% {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+  100% {
+    transform: scale(1.14) translate3d(-1.5%, -2%, 0);
+  }
+}
+.rt-kenburns {
+  animation: rt-kenburns 46s ease-out infinite alternate;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rt-kenburns,
+  .rt-eq-bar {
+    animation: none;
+  }
+}
+
+/* ---------- text helpers ---------- */
+.rt-stroke {
+  -webkit-text-stroke: 1px rgba(244, 239, 231, 0.55);
+  color: transparent;
+}
+
+.rt-gradient-text {
+  background: linear-gradient(180deg, #f4efe7 0%, #ffd9a8 55%, #ff6b2c 130%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- leaflet theme ---------- */
+.leaflet-container {
+  background: #101013 !important;
+  font-family: var(--font-ui);
+}
+.leaflet-control-attribution {
+  background: rgba(10, 10, 12, 0.55) !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+  font-size: 9px !important;
+}
+.leaflet-control-attribution a {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+.leaflet-control-zoom {
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+.leaflet-control-zoom a {
+  background: rgba(16, 16, 19, 0.85) !important;
+  color: #f4efe7 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
