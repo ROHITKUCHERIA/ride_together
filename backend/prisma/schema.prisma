@@ -1,0 +1,128 @@
+// RideTogether — Prisma schema (MVP)
+//
+// POSTGIS NOTE
+// ------------
+// PostGIS is enabled through the SQL migration `0000_enable_postgis` via
+// `CREATE EXTENSION IF NOT EXISTS postgis`. Prisma does not natively model the
+// PostGIS `geography`/`geometry` column types, so we:
+//   1. Keep plain `DoublePrecision` lat/lng columns on Trip for the MVP (fast,
+//      simple, indexable, and enough for status queries).
+//   2. Add the PostGIS `geography(Point, 4326)` column via raw SQL in the
+//      migration (see `0000_enable_postgis/migration.sql`), exposed to Prisma
+//      as `Unsupported("geography")` so the schema stays in sync without
+//      Prisma trying to manage the type.
+//
+// Future phases (real-time GPS, nearest-rider, group-split, geofencing,
+// route tracking) will build PostGIS queries on that geography column using
+// ST_DWithin / ST_Distance etc.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// A person using RideTogether. Passwords are stored only as bcrypt hashes
+/// and never returned by the API.
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  avatarUrl    String?  @map("avatar_url")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdTrips Trip[]      @relation("TripCreator")
+  memberships  TripMember[]
+  refreshTokens RefreshToken[]
+
+  @@index([email])
+  @@map("users")
+}
+
+/// A group motorcycle trip. Coordinates are stored as double precision for the
+/// MVP; the PostGIS geography column is added via raw SQL (see schema header).
+model Trip {
+  id                      String   @id @default(uuid()) @db.Uuid
+  name                    String
+  description             String?
+  startLocation           String?  @map("start_location")
+  destination             String
+  startLatitude           Float?   @map("start_latitude") @db.DoublePrecision
+  startLongitude          Float?   @map("start_longitude") @db.DoublePrecision
+  destinationLatitude     Float?   @map("destination_latitude") @db.DoublePrecision
+  destinationLongitude    Float?   @map("destination_longitude") @db.DoublePrecision
+  /// PostGIS geography point (SRID 4326) for the destination. Created by raw
+  /// SQL in the `0000_enable_postgis` migration; Prisma treats it as opaque.
+  destinationGeo           Unsupported("geography")? @map("destination_geo")
+  startDate               DateTime @map("start_date") @db.Timestamptz(6)
+  endDate                 DateTime @map("end_date") @db.Timestamptz(6)
+  status                  TripStatus @default(PLANNED)
+  inviteCode              String   @unique @map("invite_code")
+  createdBy               String   @map("created_by") @db.Uuid
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  creator     User          @relation("TripCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  members     TripMember[]
+
+  @@index([createdBy])
+  @@index([status])
+  @@index([startDate])
+  @@index([inviteCode])
+  @@map("trips")
+}
+
+/// Membership of a user in a trip. One user appears at most once per trip
+/// (unique tripId + userId). OWNER is created automatically with the trip.
+model TripMember {
+  id       String   @id @default(uuid()) @db.Uuid
+  tripId   String   @map("trip_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  role     MemberRole @default(MEMBER)
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, userId])
+  @@index([tripId])
+  @@index([userId])
+  @@map("trip_members")
+}
+
+enum TripStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+/// Refresh-token session. Only a hash of the token is stored, never the raw
+/// token. Tokens are rotated on every use; a rotated (revoked) token that is
+/// reused is rejected. All sessions of a user can be revoked at once.
+model RefreshToken {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  tokenHash     String    @unique @map("token_hash")
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  replacedById  String?   @map("replaced_by_id") @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
