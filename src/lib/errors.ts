@@ -88,6 +88,16 @@ export function friendlyError(status: number, errorCode: string, _backendMessage
       return 'Too many attempts. Please wait a moment and try again.'
     case 'VALIDATION_ERROR':
       return 'Please check the details you entered and try again.'
+    case 'MUSIC_QUERY_REQUIRED':
+      return 'Type a song or artist to search.'
+    case 'YOUTUBE_API_KEY_MISSING':
+      return 'Music search is unavailable right now.'
+    case 'YOUTUBE_API_ERROR':
+      return 'Could not reach YouTube right now. Please try again shortly.'
+    case 'YOUTUBE_VIDEO_NOT_FOUND':
+      return "That song couldn't be found on YouTube."
+    case 'SONG_ALREADY_ADDED':
+      return "This song is already in the trip's music."
     default:
       break
   }

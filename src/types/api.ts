@@ -71,3 +71,31 @@ export interface Paginated<T> {
   data: T[]
   meta: { page: number; limit: number; total: number }
 }
+
+/** A YouTube search result returned by the backend search endpoint. */
+export interface YouTubeVideoResult {
+  videoId: string
+  title: string
+  channelTitle: string
+  thumbnailUrl: string | null
+  publishedAt: string
+}
+
+export interface TripMusicSearchPage {
+  items: YouTubeVideoResult[]
+  nextPageToken: string | null
+  cached: boolean
+}
+
+/** A song in a trip's shared music library. */
+export interface TripSongItem {
+  id: string
+  songId: string
+  youtubeVideoId: string
+  title: string
+  channelTitle: string
+  thumbnailUrl: string | null
+  durationSeconds: number | null
+  addedBy: { id: string; name: string }
+  addedAt: string
+}

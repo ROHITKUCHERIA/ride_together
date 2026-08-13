@@ -79,4 +79,32 @@ export class AppConfig {
   get locationMaxFutureMs(): number {
     return Number(this.config.get<string>('LOCATION_MAX_FUTURE_MS') ?? 30000);
   }
+
+  // ---------- YouTube Music ----------
+
+  /** Official YouTube Data API v3 key. NEVER exposed to the frontend. */
+  get youtubeApiKey(): string {
+    return this.config.get<string>('YOUTUBE_API_KEY') ?? '';
+  }
+
+  /** How long search results stay in the in-memory cache (ms). */
+  get youtubeSearchCacheTtlMs(): number {
+    return Number(
+      this.config.get<string>('YOUTUBE_SEARCH_CACHE_TTL_MS') ?? 15 * 60_000,
+    );
+  }
+
+  /** Default number of results per YouTube search page. */
+  get youtubeSearchMaxResults(): number {
+    return Number(
+      this.config.get<string>('YOUTUBE_SEARCH_MAX_RESULTS') ?? 10,
+    );
+  }
+
+  /** Soft cap on search query length (chars) after trimming. */
+  get youtubeSearchMaxQueryLength(): number {
+    return Number(
+      this.config.get<string>('YOUTUBE_SEARCH_MAX_QUERY_LENGTH') ?? 200,
+    );
+  }
 }

@@ -41,6 +41,7 @@ model User {
   memberships  TripMember[]
   refreshTokens RefreshToken[]
   currentLocations CurrentLocation[]
+  addedTripSongs TripSong[] @relation("TripSongAddedBy")
 
   @@index([email])
   @@map("users")
@@ -72,6 +73,7 @@ model Trip {
   creator     User          @relation("TripCreator", fields: [createdBy], references: [id], onDelete: Restrict)
   members     TripMember[]
   currentLocations CurrentLocation[]
+  tripSongs   TripSong[]
 
   @@index([createdBy])
   @@index([status])
@@ -158,4 +160,43 @@ model CurrentLocation {
   @@index([userId])
   @@index([lastUpdatedAt])
   @@map("current_locations")
+}
+
+/// A YouTube video tracked as a song. Metadata is shared across every trip —
+/// never duplicated per trip. `youtubeVideoId` is unique and can later be
+/// passed straight to the official YouTube IFrame Player API.
+model Song {
+  id              String   @id @default(uuid()) @db.Uuid
+  youtubeVideoId  String   @unique @map("youtube_video_id")
+  title           String
+  channelTitle    String   @map("channel_title")
+  thumbnailUrl    String?  @map("thumbnail_url")
+  durationSeconds Int?     @map("duration_seconds")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tripSongs TripSong[]
+
+  @@index([title])
+  @@map("songs")
+}
+
+/// A song added to a specific trip's shared music library. One YouTube song
+/// can appear at most once per trip (unique tripId + songId).
+model TripSong {
+  id            String   @id @default(uuid()) @db.Uuid
+  tripId        String   @map("trip_id") @db.Uuid
+  songId        String   @map("song_id") @db.Uuid
+  addedByUserId String   @map("added_by_user_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  trip    Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  song    Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+  addedBy User @relation("TripSongAddedBy", fields: [addedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([tripId, songId])
+  @@index([tripId])
+  @@index([songId])
+  @@index([addedByUserId])
+  @@map("trip_songs")
 }

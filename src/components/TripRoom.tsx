@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import ConnectionStatus from './ConnectionStatus'
 import CursorSpotlight from './CursorSpotlight'
@@ -7,16 +7,16 @@ import FloatingActions from './FloatingActions'
 import GpsStatus from './GpsStatus'
 import LoadingScreen from './LoadingScreen'
 import MobileBottomNav from './MobileBottomNav'
-import MusicPlayer from './MusicPlayer'
 import OnlineIndicator from './OnlineIndicator'
 import PlaylistDrawer from './PlaylistDrawer'
 import RidersDrawer from './RidersDrawer'
 import TripHero from './TripHero'
 import TripInfoDrawer from './TripInfoDrawer'
+import TripMusicDrawer from './TripMusicDrawer'
 import TripNavigation from './TripNavigation'
 import ManageTripDrawer from '../app/components/ManageTripDrawer'
 import { trip as mockTrip } from '../data/mockData'
-import { useIsMobile } from '../hooks/useMediaQuery'
+import { useMusicPlayer } from '../music/context'
 import type { ConnectionState, DrawerKind, GpsState, Playlist, Rider, TripInfo } from '../types'
 import type { MemberRole, Trip, TripMember } from '../types/api'
 import type { TripMapRoute } from '../app/tripInfo'
@@ -50,28 +50,22 @@ export default function TripRoom({
   onRefresh,
   onDeleted,
 }: TripRoomProps) {
-  const isMobile = useIsMobile()
   const thisTrip = trip ?? mockTrip
+  const music = useMusicPlayer()
 
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState<DrawerKind>(null)
   const [manageOpen, setManageOpen] = useState(false)
+  const [tripMusicOpen, setTripMusicOpen] = useState(false)
   const [mapOpen, setMapOpen] = useState(false)
-  const [musicExpanded, setMusicExpanded] = useState(false)
 
   const [riders, setRiders] = useState<Rider[]>(thisTrip.riders)
   const [playlists, setPlaylists] = useState<Playlist[]>(thisTrip.playlists)
   const [connection, setConnection] = useState<ConnectionState>('connected')
   const [gps, setGps] = useState<GpsState>('tracking')
 
-  const [songIndex, setSongIndex] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [progress, setProgress] = useState(0)
-
   const ridersRef = useRef(riders)
   ridersRef.current = riders
-  const songIndexRef = useRef(songIndex)
-  songIndexRef.current = songIndex
 
   /* sync presentation data when the source trip changes (e.g. after refresh) */
   useEffect(() => {
@@ -79,9 +73,6 @@ export default function TripRoom({
     setPlaylists(thisTrip.playlists)
   }, [thisTrip])
 
-  const songs = thisTrip.songs
-  const hasMusic = songs.length > 0
-  const currentSong = songs[songIndex]
   const onlineCount = riders.filter((r) => r.status !== 'offline').length
 
   /* ---------- loading ---------- */
@@ -89,44 +80,6 @@ export default function TripRoom({
     const t = window.setTimeout(() => setLoading(false), 1450)
     return () => window.clearTimeout(t)
   }, [])
-
-  /* ---------- music playback simulation ---------- */
-  const goToSong = useCallback(
-    (i: number) => {
-      const n = songs.length
-      if (n === 0) return
-      setSongIndex(((i % n) + n) % n)
-      setProgress(0)
-    },
-    [songs.length],
-  )
-
-  const nextSong = useCallback(() => goToSong(songIndexRef.current + 1), [goToSong])
-  const prevSong = useCallback(() => goToSong(songIndexRef.current - 1), [goToSong])
-
-  const seek = useCallback(
-    (seconds: number) => {
-      const song = songs[songIndexRef.current]
-      if (!song) return
-      setProgress(Math.max(0, Math.min(song.duration, seconds)))
-    },
-    [songs],
-  )
-
-  useEffect(() => {
-    if (!isPlaying) return
-    const id = window.setInterval(() => setProgress((p) => p + 0.5), 500)
-    return () => window.clearInterval(id)
-  }, [isPlaying])
-
-  useEffect(() => {
-    const song = songs[songIndex]
-    if (song && progress >= song.duration && progress > 0) nextSong()
-  }, [progress, songIndex, songs, nextSong])
-
-  useEffect(() => {
-    if (!currentSong && songIndex !== 0) setSongIndex(0)
-  }, [currentSong, songIndex])
 
   /* ---------- demo: subtle rider presence drift ---------- */
   useEffect(() => {
@@ -172,20 +125,11 @@ export default function TripRoom({
     }
   }, [mapOpen])
 
-  useEffect(() => {
-    if (!musicExpanded) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMusicExpanded(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [musicExpanded])
-
   const openDrawer = (kind: Exclude<DrawerKind, null>) => setDrawer((d) => (d === kind ? null : kind))
 
   const handleOpenMusic = () => {
-    if (hasMusic) setMusicExpanded(true)
-    else openDrawer('playlists')
+    if (music.current) music.openFullPlayer()
+    else setTripMusicOpen(true)
   }
 
   const addPlaylist = (name: string) => {
@@ -205,26 +149,11 @@ export default function TripRoom({
 
       <FloatingActions
         onOpenMap={() => setMapOpen(true)}
+        onOpenTripMusic={() => setTripMusicOpen(true)}
         onOpenPlaylists={() => openDrawer('playlists')}
         onOpenRiders={() => openDrawer('riders')}
         onOpenTripInfo={() => openDrawer('tripinfo')}
       />
-
-      {currentSong ? (
-        <MusicPlayer
-          song={currentSong}
-          queueCount={songs.length}
-          isPlaying={isPlaying}
-          progress={progress}
-          onToggle={() => setIsPlaying((p) => !p)}
-          onPrev={prevSong}
-          onNext={nextSong}
-          onSeek={seek}
-          isMobile={isMobile}
-          expanded={musicExpanded}
-          onSetExpanded={setMusicExpanded}
-        />
-      ) : null}
 
       <MobileBottomNav
         active={mapOpen ? 'map' : undefined}
@@ -267,6 +196,15 @@ export default function TripRoom({
         playlists={playlists}
         onCreate={addPlaylist}
       />
+      {tripId ? (
+        <TripMusicDrawer
+          open={tripMusicOpen}
+          onClose={() => setTripMusicOpen(false)}
+          tripId={tripId}
+          role={role}
+          currentUserId={currentUserId}
+        />
+      ) : null}
       <RidersDrawer open={drawer === 'riders'} onClose={() => setDrawer(null)} riders={riders} onlineCount={onlineCount} />
       <TripInfoDrawer
         open={drawer === 'tripinfo'}

@@ -11,6 +11,7 @@ import { TripsModule } from './trips/trips.module';
 import { TripMembersModule } from './trip-members/trip-members.module';
 import { TripLocationsModule } from './locations/locations.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { MusicModule } from './music/music.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -23,6 +24,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     ThrottlerModule.forRoot([
       { name: 'default', ttl: 60_000, limit: 120 },
       { name: 'auth', ttl: 60_000, limit: 10 },
+      { name: 'music', ttl: 60_000, limit: 30 },
     ]),
     AuthModule,
     UsersModule,
@@ -30,6 +32,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     TripMembersModule,
     TripLocationsModule,
     RealtimeModule,
+    MusicModule,
   ],
   controllers: [AppController],
   providers: [

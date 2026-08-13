@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion'
-import { ListMusic, MapPin, Route, Users } from 'lucide-react'
+import { ListMusic, MapPin, Music2, Route, Users } from 'lucide-react'
 
 interface FloatingActionsProps {
   onOpenMap: () => void
+  onOpenTripMusic: () => void
   onOpenPlaylists: () => void
   onOpenRiders: () => void
   onOpenTripInfo: () => void
@@ -10,14 +11,16 @@ interface FloatingActionsProps {
 
 const ITEMS = [
   { id: 'map', label: 'Live Map', icon: MapPin, action: 'onOpenMap' },
+  { id: 'trip-music', label: 'Trip Music', icon: Music2, action: 'onOpenTripMusic' },
   { id: 'music', label: 'Playlists', icon: ListMusic, action: 'onOpenPlaylists' },
   { id: 'riders', label: 'Riders', icon: Users, action: 'onOpenRiders' },
   { id: 'trip', label: 'Trip Info', icon: Route, action: 'onOpenTripInfo' },
 ] as const
 
-export default function FloatingActions({ onOpenMap, onOpenPlaylists, onOpenRiders, onOpenTripInfo }: FloatingActionsProps) {
+export default function FloatingActions({ onOpenMap, onOpenTripMusic, onOpenPlaylists, onOpenRiders, onOpenTripInfo }: FloatingActionsProps) {
   const handlers: Record<(typeof ITEMS)[number]['action'], () => void> = {
     onOpenMap,
+    onOpenTripMusic,
     onOpenPlaylists,
     onOpenRiders,
     onOpenTripInfo,
