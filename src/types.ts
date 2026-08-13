@@ -49,6 +49,8 @@ export interface TripInfo {
   creator: string
   inviteCode: string
   inviteUrl: string
+  startCoords?: [number, number]
+  destinationCoords?: [number, number]
   riders: Rider[]
   songs: Song[]
   playlists: Playlist[]

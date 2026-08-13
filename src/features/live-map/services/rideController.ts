@@ -4,23 +4,33 @@ import { riderStore } from '../state/riderStore'
 import { connectionStore } from '../state/connectionStore'
 import type { RealtimeService } from './RealtimeService'
 import { MockRealtimeService } from './MockRealtimeService'
+import { SocketRealtimeService } from './SocketRealtimeService'
+import { USE_REALTIME_BACKEND } from '../config'
 import { trip } from '../../../data/mockData'
 
 /**
- * Owns the live map services. In production this is where the Socket.IO /
- * NestJS / PostGIS transport would be swapped in behind the same interface.
- * The frontend never trusts userId/tripId from inbound payloads — the real
- * userId is stamped here from trusted app state.
+ * Owns the live map services. Authenticated trips always talk to the Socket.IO
+ * backend with the signed-in user's JWT. The in-browser mock is only used for
+ * the demo route (unless VITE_USE_REALTIME_BACKEND=true opts the demo into the
+ * backend too). Identity never comes from inbound payloads — it is stamped by
+ * the trusted backend context (mock mode stamps trusted demo ids).
  */
 class RideController {
   private realtime: RealtimeService | null = null
   private stopLocation: (() => void) | null = null
-  private meUserId = ''
+  private activeTripId: string | null = null
 
-  init(meUserId = ''): void {
-    this.meUserId = meUserId
-    if (this.realtime) return
-    this.realtime = new MockRealtimeService()
+  init(tripId?: string, opts: { backend?: boolean } = {}): void {
+    if (this.realtime) {
+      // The same controller instance already targets this trip.
+      if (this.activeTripId === (tripId ?? null)) return
+      this.dispose()
+    }
+    this.activeTripId = tripId ?? null
+    const useBackend = !!(opts.backend || USE_REALTIME_BACKEND)
+    this.realtime = useBackend
+      ? new SocketRealtimeService({ tripId })
+      : new MockRealtimeService()
 
     this.realtime.onConnectionState((state) => connectionStore.set(state))
     this.realtime.onRiderLocations((riders) => {
@@ -28,7 +38,7 @@ class RideController {
       gpsStore.setAccuracy(riders.find((r) => r.isMe)?.accuracy ?? null)
     })
 
-    this.realtime.connect()
+    this.realtime.connect(tripId)
   }
 
   startSharingLocation(): void {
@@ -36,12 +46,13 @@ class RideController {
     gpsStore.setMode('starting')
     this.stopLocation = this.realtime.locationService.start({
       onUpdate: (update) => {
-        if (!this.realtime) return
+        const id = this.identity()
+        if (!id || !this.realtime) return
         // userId/tripId come from trusted app state, never from the payload.
         const trusted: LocationUpdate = {
           ...update,
-          userId: this.meUserId,
-          tripId: trip.id,
+          userId: id.userId,
+          tripId: id.tripId,
         }
         gpsStore.setMode('active')
         gpsStore.setError(null)
@@ -75,9 +86,18 @@ class RideController {
     this.pauseLocationSharing()
     this.realtime?.disconnect()
     this.realtime = null
+    this.activeTripId = null
     riderStore.clear()
     connectionStore.set('connected')
     gpsStore.setMode('inactive')
+  }
+
+  private identity(): { userId: string; tripId: string } | null {
+    if (this.realtime instanceof SocketRealtimeService) {
+      return this.realtime.identity
+    }
+    const me = trip.riders.find((r) => r.isMe)
+    return { userId: me?.id ?? '', tripId: trip.id }
   }
 }
 

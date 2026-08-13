@@ -6,6 +6,8 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
 
+jest.setTimeout(120_000);
+
 /**
  * E2E tests against the real API + database.
  *

@@ -243,9 +243,7 @@ describe('TripsService', () => {
 
   describe('leave', () => {
     it('lets a non-owner leave', async () => {
-      access.requireMember.mockResolvedValue(
-        membership(MemberRole.MEMBER),
-      );
+      access.requireMember.mockResolvedValue(membership(MemberRole.MEMBER));
       await service.leave('trip-1', 'user-1');
       expect(prisma.tripMember.delete).toHaveBeenCalledWith({
         where: { id: 'member-1' },
@@ -253,9 +251,7 @@ describe('TripsService', () => {
     });
 
     it('blocks the owner from leaving', async () => {
-      access.requireMember.mockResolvedValue(
-        membership(MemberRole.OWNER),
-      );
+      access.requireMember.mockResolvedValue(membership(MemberRole.OWNER));
       await expect(service.leave('trip-1', 'user-1')).rejects.toMatchObject({
         status: HttpStatus.BAD_REQUEST,
         errorCode: ErrorCodes.OWNER_CANNOT_LEAVE,

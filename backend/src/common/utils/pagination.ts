@@ -15,7 +15,9 @@ export function paginate<T>(
   total: number,
   page: number,
   limit: number,
-): ApiSuccess<PaginatedResult<T>['data']> & { meta: PaginatedResult<T>['meta'] } {
+): ApiSuccess<PaginatedResult<T>['data']> & {
+  meta: PaginatedResult<T>['meta'];
+} {
   return { success: true, data, meta: { page, limit, total } };
 }
 

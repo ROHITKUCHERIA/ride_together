@@ -18,6 +18,8 @@ import {
 import { calculateDistanceInMeters } from '../utils/geo'
 import { trip as mockTrip } from '../../../data/mockData'
 import { useIsMobile } from '../../../hooks/useMediaQuery'
+import type { TripInfo } from '../../../types'
+import type { TripMapRoute } from '../../../app/tripInfo'
 import RiderMarker from './RiderMarker'
 import RouteLayer from './RouteLayer'
 import MapControls from './MapControls'
@@ -33,9 +35,18 @@ interface GroupRideMapProps {
   onExitToMusic: () => void
   onExitToRiders: () => void
   onExitToTripInfo: () => void
+  /** Backend trip id for the realtime connection (pinned in real mode). */
+  tripId?: string
+  /** Force the backend Socket.IO service (real authenticated trips). */
+  useBackend?: boolean
+  /** The trip this map renders. Falls back to the demo trip when omitted. */
+  trip?: TripInfo
+  /** Start/destination coordinates for the route line (real mode). */
+  mapRoute?: TripMapRoute
 }
 
-export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, onExitToTripInfo }: GroupRideMapProps) {
+export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, onExitToTripInfo, tripId, useBackend, trip = mockTrip, mapRoute }: GroupRideMapProps) {
+  const currentTrip = trip
   const isMobile = useIsMobile()
   const { riders } = useRiders()
   const connection = useConnection()
@@ -75,10 +86,9 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
 
   /* ---------- controller lifecycle ---------- */
   useEffect(() => {
-    const meRider = mockTrip.riders.find((r) => r.isMe)
-    rideController.init(meRider?.id ?? '')
+    rideController.init(tripId ?? currentTrip.id, { backend: !!useBackend })
     return () => rideController.dispose()
-  }, [])
+  }, [tripId, useBackend, currentTrip.id])
 
   /* ---------- fit group on open ---------- */
   const fitGroup = useCallback(() => {
@@ -86,8 +96,8 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
     if (!map) return
     const pts: [number, number][] = [
       ...active.map((r) => [r.latitude, r.longitude] as [number, number]),
-      ...mockTrip.riders
-        .filter((r) => r.status !== 'offline')
+      ...currentTrip.riders
+        .filter((r) => r.status !== 'offline' && (r.lat !== 0 || r.lng !== 0))
         .map((r) => [r.lat, r.lng] as [number, number]),
     ]
     if (me) pts.push([me.latitude, me.longitude])
@@ -97,7 +107,7 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
     }
     map.fitBounds(pts as LatLngBoundsExpression, { padding: [48, 48], maxZoom: FIT_GROUP_MAX_ZOOM })
     setViewMode('group')
-  }, [active, me])
+  }, [active, me, currentTrip.riders])
 
   useEffect(() => {
     const t = window.setTimeout(fitGroup, 350)
@@ -147,6 +157,14 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
 
   const provider = providers.find((p) => p.id === providerId) ?? providers[0]
 
+  const routeCoords = useMemo<[number, number][] | null>(() => {
+    if (!mapRoute) return null
+    const pts: [number, number][] = []
+    if (mapRoute.origin) pts.push(mapRoute.origin)
+    if (mapRoute.destination) pts.push(mapRoute.destination)
+    return pts.length >= 2 ? pts : null
+  }, [mapRoute])
+
   return (
     <motion.div
       className="fixed inset-0 z-[70] bg-night"
@@ -170,7 +188,7 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
         {provider ? (
           <TileLayer url={provider.url} attribution={provider.attribution} maxZoom={provider.maxZoom} />
         ) : null}
-        <RouteLayer />
+        <RouteLayer route={tripId || useBackend ? routeCoords : undefined} />
         {riders.map((r) => (
           <RiderMarker
             key={r.userId}
@@ -206,10 +224,10 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
       {/* group summary + status — top-left */}
       <div className="pointer-events-none absolute left-3 top-16 z-[5] flex flex-col gap-2 sm:left-4 sm:top-[72px]">
         <GroupSummaryCard
-          tripName={mockTrip.name}
-          origin={mockTrip.origin}
-          destination={mockTrip.destination}
-          routeKm={mockTrip.distanceKm}
+          tripName={currentTrip.name}
+          origin={currentTrip.origin}
+          destination={currentTrip.destination}
+          routeKm={currentTrip.distanceKm}
           live={counts.live}
           delayed={counts.delayed}
           offline={counts.offline}
@@ -254,13 +272,13 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
       {/* desktop: bottom-left trip info */}
       {!isMobile && (
         <div className="pointer-events-auto absolute bottom-5 left-4 z-[5] w-[min(30vw,300px)] rounded-2xl border border-white/12 bg-[rgba(18,18,21,0.85)] p-3.5 backdrop-blur-2xl">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-mist/50">Goa Road Trip</p>
+          <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-mist/50">{currentTrip.name}</p>
           <p className="mt-1 font-display text-base font-bold text-bone">
-            {mockTrip.origin} → {mockTrip.destination}
+            {currentTrip.origin} → {currentTrip.destination}
           </p>
           <p className="mt-1 flex items-center gap-1.5 text-[11px] text-mist/70">
             <CalendarRange size={11} aria-hidden="true" />
-            {mockTrip.startDate} · {mockTrip.days} days
+            {currentTrip.startDate} · {currentTrip.days} days
           </p>
         </div>
       )}

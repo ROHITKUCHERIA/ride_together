@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AppConfig } from './config/app.config';
+import { SocketIoAdapter } from './realtime/socket-io.adapter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -24,6 +25,9 @@ async function bootstrap() {
     origin: config.frontendUrl,
     credentials: true,
   });
+
+  // Socket.IO with the same CORS policy as the HTTP layer.
+  app.useWebSocketAdapter(new SocketIoAdapter(app, config.frontendUrl));
 
   // Global validation: strip unknown fields, transform + validate payloads.
   app.useGlobalPipes(

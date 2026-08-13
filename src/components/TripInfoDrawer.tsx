@@ -1,16 +1,27 @@
-import { Calendar, Flag, MapPin, Route } from 'lucide-react'
+import { Calendar, Flag, MapPin, Route, Settings } from 'lucide-react'
 import Avatar from './Avatar'
+import Button from './ui/Button'
 import Drawer from './Drawer'
 import ShareTrip from './ShareTrip'
 import type { TripInfo } from '../types'
+import type { MemberRole } from '../types/api'
 
 interface TripInfoDrawerProps {
   open: boolean
   onClose: () => void
   trip: TripInfo
+  role?: MemberRole
+  canManage?: boolean
+  onManage?: () => void
 }
 
-export default function TripInfoDrawer({ open, onClose, trip }: TripInfoDrawerProps) {
+function roleLabel(role: MemberRole): string {
+  if (role === 'OWNER') return 'Owner'
+  if (role === 'ADMIN') return 'Admin'
+  return 'Member'
+}
+
+export default function TripInfoDrawer({ open, onClose, trip, role, canManage, onManage }: TripInfoDrawerProps) {
   const creator = trip.riders.find((r) => r.isMe)
 
   return (
@@ -74,6 +85,21 @@ export default function TripInfoDrawer({ open, onClose, trip }: TripInfoDrawerPr
         </div>
 
         <ShareTrip trip={trip} />
+
+        {role ? (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-mist/50">Your role</p>
+              <p className="font-display text-sm font-semibold text-bone">{roleLabel(role)}</p>
+            </div>
+            {canManage && onManage ? (
+              <Button variant="outline" size="sm" onClick={onManage}>
+                <Settings size={14} aria-hidden="true" />
+                Manage trip
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </Drawer>
   )

@@ -130,12 +130,11 @@ describe('AuthService', () => {
     it('issues tokens for valid credentials', async () => {
       prisma.user.findUnique.mockResolvedValue({
         id: 'user-1',
-        passwordHash: '$2a$12$LJx1WKyvvfLk/eZWm7xGG.QU7hq5z1cP4VxQvHt0q7rLpYtGwqH0G', // dummy
+        passwordHash:
+          '$2a$12$LJx1WKyvvfLk/eZWm7xGG.QU7hq5z1cP4VxQvHt0q7rLpYtGwqH0G', // dummy
       });
       const bcrypt = require('bcryptjs');
-      jest
-        .spyOn(bcrypt, 'compare')
-        .mockImplementationOnce(async () => true);
+      jest.spyOn(bcrypt, 'compare').mockImplementationOnce(async () => true);
 
       const tokens = await service.login('test@example.com', 'Password123');
       expect(tokens.accessToken).toBe('signed-access-token');
@@ -148,9 +147,7 @@ describe('AuthService', () => {
         passwordHash: 'hash',
       });
       const bcrypt = require('bcryptjs');
-      jest
-        .spyOn(bcrypt, 'compare')
-        .mockImplementationOnce(async () => false);
+      jest.spyOn(bcrypt, 'compare').mockImplementationOnce(async () => false);
 
       await expect(
         service.login('test@example.com', 'WrongPass1'),

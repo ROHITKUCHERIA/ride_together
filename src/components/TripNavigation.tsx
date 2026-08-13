@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Bike, ExternalLink, Music2 } from 'lucide-react'
+import { ArrowLeft, Bike, ExternalLink, Music2 } from 'lucide-react'
 import Avatar from './Avatar'
 import OnlineIndicator from './OnlineIndicator'
 import type { TripInfo } from '../types'
@@ -7,6 +7,7 @@ import type { TripInfo } from '../types'
 interface TripNavigationProps {
   trip: TripInfo
   onlineCount: number
+  onBack?: () => void
 }
 
 function ProviderLink({ label, href, compact }: { label: string; href: string; compact: boolean }) {
@@ -24,7 +25,7 @@ function ProviderLink({ label, href, compact }: { label: string; href: string; c
   )
 }
 
-export default function TripNavigation({ trip, onlineCount }: TripNavigationProps) {
+export default function TripNavigation({ trip, onlineCount, onBack }: TripNavigationProps) {
   const me = trip.riders.find((r) => r.isMe)
 
   return (
@@ -34,19 +35,31 @@ export default function TripNavigation({ trip, onlineCount }: TripNavigationProp
       transition={{ duration: 0.7, delay: 0.5, ease: 'easeOut' }}
       className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5"
     >
-      <a
-        href="#"
-        onClick={(e) => e.preventDefault()}
-        className="pointer-events-auto flex items-center gap-2.5 rounded-full px-2 py-1 focus-visible:outline-2 focus-visible:outline-ember"
-        aria-label="RIDETOGETHER home"
-      >
-        <span className="grid size-8 place-items-center rounded-full border border-white/15 bg-night/50 backdrop-blur-md">
-          <Bike size={16} className="text-ember" strokeWidth={2} />
-        </span>
-        <span className="font-display text-sm font-bold tracking-[0.22em] text-bone">
-          RIDE<span className="text-ember">TOGETHER</span>
-        </span>
-      </a>
+      <div className="pointer-events-auto flex items-center gap-1.5">
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to trips"
+            className="grid size-9 place-items-center rounded-full border border-white/12 bg-night/50 text-bone/85 backdrop-blur-md transition hover:scale-105 hover:bg-night/75 hover:text-bone focus-visible:outline-2 focus-visible:outline-ember"
+          >
+            <ArrowLeft size={16} aria-hidden="true" />
+          </button>
+        ) : null}
+        <a
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          className="flex items-center gap-2.5 rounded-full px-2 py-1 focus-visible:outline-2 focus-visible:outline-ember"
+          aria-label="RIDETOGETHER home"
+        >
+          <span className="grid size-8 place-items-center rounded-full border border-white/15 bg-night/50 backdrop-blur-md">
+            <Bike size={16} className="text-ember" strokeWidth={2} />
+          </span>
+          <span className="font-display text-sm font-bold tracking-[0.22em] text-bone">
+            RIDE<span className="text-ember">TOGETHER</span>
+          </span>
+        </a>
+      </div>
 
       <span className="hidden font-display text-[11px] font-medium uppercase tracking-[0.42em] text-bone/50 xl:block">
         {trip.destination} {trip.startDate.slice(-4)}

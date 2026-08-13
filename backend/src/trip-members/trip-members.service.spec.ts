@@ -100,7 +100,12 @@ describe('TripMembersService', () => {
   describe('updateMemberRole', () => {
     it('rejects promoting to OWNER', async () => {
       await expect(
-        service.updateMemberRole('trip-1', 'user-1', 'user-2', MemberRole.OWNER),
+        service.updateMemberRole(
+          'trip-1',
+          'user-1',
+          'user-2',
+          MemberRole.OWNER,
+        ),
       ).rejects.toMatchObject({
         status: HttpStatus.BAD_REQUEST,
         errorCode: ErrorCodes.INVALID_ROLE_TRANSITION,
@@ -110,7 +115,12 @@ describe('TripMembersService', () => {
     it('rejects a MEMBER actor', async () => {
       access.requireMember.mockResolvedValue(actor(MemberRole.MEMBER));
       await expect(
-        service.updateMemberRole('trip-1', 'user-1', 'user-2', MemberRole.ADMIN),
+        service.updateMemberRole(
+          'trip-1',
+          'user-1',
+          'user-2',
+          MemberRole.ADMIN,
+        ),
       ).rejects.toMatchObject({
         status: HttpStatus.FORBIDDEN,
         errorCode: ErrorCodes.TRIP_PERMISSION_DENIED,
@@ -120,7 +130,12 @@ describe('TripMembersService', () => {
     it('rejects a missing target member', async () => {
       prisma.tripMember.findFirst.mockResolvedValue(null);
       await expect(
-        service.updateMemberRole('trip-1', 'user-1', 'user-9', MemberRole.ADMIN),
+        service.updateMemberRole(
+          'trip-1',
+          'user-1',
+          'user-9',
+          MemberRole.ADMIN,
+        ),
       ).rejects.toMatchObject({
         status: HttpStatus.NOT_FOUND,
         errorCode: ErrorCodes.TRIP_NOT_FOUND,
@@ -130,7 +145,12 @@ describe('TripMembersService', () => {
     it('never modifies an OWNER', async () => {
       prisma.tripMember.findFirst.mockResolvedValue(target(MemberRole.OWNER));
       await expect(
-        service.updateMemberRole('trip-1', 'user-1', 'user-2', MemberRole.ADMIN),
+        service.updateMemberRole(
+          'trip-1',
+          'user-1',
+          'user-2',
+          MemberRole.ADMIN,
+        ),
       ).rejects.toMatchObject({
         status: HttpStatus.FORBIDDEN,
         errorCode: ErrorCodes.TRIP_PERMISSION_DENIED,
@@ -141,7 +161,12 @@ describe('TripMembersService', () => {
       access.requireMember.mockResolvedValue(actor(MemberRole.ADMIN));
       prisma.tripMember.findFirst.mockResolvedValue(target(MemberRole.ADMIN));
       await expect(
-        service.updateMemberRole('trip-1', 'user-1', 'user-2', MemberRole.MEMBER),
+        service.updateMemberRole(
+          'trip-1',
+          'user-1',
+          'user-2',
+          MemberRole.MEMBER,
+        ),
       ).rejects.toMatchObject({
         status: HttpStatus.FORBIDDEN,
         errorCode: ErrorCodes.TRIP_PERMISSION_DENIED,

@@ -1,8 +1,30 @@
+function str(env: string | undefined, fallback: string): string {
+  if (env === undefined || env === '') return fallback
+  return env
+}
+
 function num(env: string | undefined, fallback: number): number {
   if (env === undefined || env === '') return fallback
   const n = Number(env)
   return Number.isFinite(n) ? n : fallback
 }
+
+/* ---------- backend realtime integration ---------- */
+
+/** Base URL of the NestJS backend (REST + Socket.IO share this origin). */
+export const API_URL = str(import.meta.env.VITE_API_URL, 'http://localhost:3000')
+/**
+ * When 'true' the live map talks to the backend over Socket.IO instead of the
+ * in-browser mock. Requires the backend to be running and the demo user to be
+ * a trip member (see prisma/seed.ts).
+ */
+export const USE_REALTIME_BACKEND = import.meta.env.VITE_USE_REALTIME_BACKEND === 'true'
+/** Optional explicit trip id; when empty the first joined trip is used. */
+export const BACKEND_TRIP_ID = str(import.meta.env.VITE_BACKEND_TRIP_ID, '')
+/** Optional pre-issued access token; when empty a demo user is logged in. */
+export const ACCESS_TOKEN_OVERRIDE = str(import.meta.env.VITE_ACCESS_TOKEN, '')
+export const DEV_EMAIL = str(import.meta.env.VITE_DEV_EMAIL, 'demo@ridetogether.app')
+export const DEV_PASSWORD = str(import.meta.env.VITE_DEV_PASSWORD, 'Demo1234!')
 
 /**
  * Client-side GPS throttle. NOTE: this is NOT a security mechanism —

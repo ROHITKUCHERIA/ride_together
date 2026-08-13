@@ -9,6 +9,8 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { TripsModule } from './trips/trips.module';
 import { TripMembersModule } from './trip-members/trip-members.module';
+import { TripLocationsModule } from './locations/locations.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -26,6 +28,8 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     UsersModule,
     TripsModule,
     TripMembersModule,
+    TripLocationsModule,
+    RealtimeModule,
   ],
   controllers: [AppController],
   providers: [

@@ -35,7 +35,7 @@ body {
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden;
+  overflow-x: hidden;
   touch-action: manipulation;
 }
 
@@ -155,6 +155,26 @@ button {
 .leaflet-container {
   background: #101013 !important;
   font-family: var(--font-ui);
+}
+
+/* ---------- route line: travelling-dash direction effect ---------- */
+@keyframes rt-route-flow {
+  to {
+    stroke-dashoffset: -128;
+  }
+}
+.rt-route-flow {
+  animation: rt-route-flow 6.6s linear infinite;
+}
+.rt-route-arrow {
+  background: transparent !important;
+  border: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rt-route-flow {
+    animation: none;
+  }
 }
 .leaflet-control-attribution {
   background: rgba(10, 10, 12, 0.55) !important;

@@ -40,6 +40,7 @@ model User {
   createdTrips Trip[]      @relation("TripCreator")
   memberships  TripMember[]
   refreshTokens RefreshToken[]
+  currentLocations CurrentLocation[]
 
   @@index([email])
   @@map("users")
@@ -70,6 +71,7 @@ model Trip {
 
   creator     User          @relation("TripCreator", fields: [createdBy], references: [id], onDelete: Restrict)
   members     TripMember[]
+  currentLocations CurrentLocation[]
 
   @@index([createdBy])
   @@index([status])
@@ -125,4 +127,35 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+/// The rider's single most-recent location in a trip. Updated via UPSERT on
+/// every accepted GPS event — no append-only history in Phase 2. A rider can
+/// have at most one current location per trip (unique tripId + userId).
+/// PostGIS `location_geo geography(Point, 4326)` is added via raw SQL in the
+/// migration so spatial queries (ST_DWithin etc.) work for group-split /
+/// nearest-rider features later.
+model CurrentLocation {
+  id            String   @id @default(uuid()) @db.Uuid
+  tripId        String   @map("trip_id") @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  latitude      Float    @db.DoublePrecision
+  longitude     Float    @db.DoublePrecision
+  accuracy      Float    @db.DoublePrecision
+  speed         Float?   @db.DoublePrecision
+  heading       Float?   @db.DoublePrecision
+  locationGeo   Unsupported("geography")? @map("location_geo")
+  /// Client-provided timestamp (validated); used for status derivation.
+  lastUpdatedAt DateTime @map("last_updated_at") @db.Timestamptz(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, userId])
+  @@index([tripId])
+  @@index([userId])
+  @@index([lastUpdatedAt])
+  @@map("current_locations")
 }
