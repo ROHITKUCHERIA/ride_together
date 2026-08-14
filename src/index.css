@@ -15,6 +15,10 @@
   --color-live: #3ddc84;
   --color-dusk: #1b1730;
 
+  /* Spotify-tinted accent for playing states (cyan base, green influence) */
+  --color-accent: color-mix(in oklab, #3ddc84 100%, #3ddc84);
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 22%, transparent);
+
   --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
 }
 

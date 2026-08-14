@@ -40,6 +40,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const playerElRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<YTPlayer | null>(null)
   const loadedVideoIdRef = useRef<string | null>(null)
+  const loadInFlightRef = useRef(false)
+  const pendingPlayRef = useRef(false)
   const autoplayTimerRef = useRef<number | null>(null)
   const progressTimerRef = useRef<number | null>(null)
   const seekHandledRef = useRef(state.seekNonce)
@@ -57,8 +59,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const markAutoplayBlocked = useCallback(() => {
+    pendingPlayRef.current = false
     dispatch({ type: 'SET_AUTOPLAY_BLOCKED', blocked: true })
     dispatch({ type: 'SET_PLAYING', playing: false })
+    dispatch({ type: 'SET_LOADING', loading: false })
   }, [])
 
   const checkAutoplay = useCallback(() => {
@@ -84,6 +88,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const attemptPlay = useCallback(() => {
     const player = playerRef.current
     if (!player) return
+    // Mark that we want to play until the player confirms with PLAYING, so a
+    // transient PAUSED from the previous track can't cancel this request.
+    pendingPlayRef.current = true
     const result = player.playVideo()
     // Rejections are surfaced by the autoplay grace timer — do not mark the
     // video as blocked merely because playVideo() was called early.
@@ -95,19 +102,26 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const loadAndPlay = useCallback(
-    (videoId: string) => {
+    async (videoId: string) => {
       const player = playerRef.current
       if (!player) return
       loadedVideoIdRef.current = videoId
+      loadInFlightRef.current = true
       dispatch({ type: 'SET_LOADING', loading: true })
       dispatch({ type: 'SET_ERROR', error: null })
       dispatch({ type: 'SET_AUTOPLAY_BLOCKED', blocked: false })
-      const loaded = player.loadVideoById({ videoId, startSeconds: 0 })
-      if (loaded && typeof loaded.catch === 'function') {
-        loaded.catch(() => {
-          loadedVideoIdRef.current = null
-        })
+      try {
+        // Wait for the video to actually load before requesting playback —
+        // calling playVideo() while loadVideoById() is still pending is
+        // rejected, which is why a first click used to only "load".
+        await player.loadVideoById({ videoId, startSeconds: 0 })
+      } catch {
+        loadInFlightRef.current = false
+        loadedVideoIdRef.current = null
+        scheduleAutoplayCheck()
+        return
       }
+      loadInFlightRef.current = false
       attemptPlay()
       scheduleAutoplayCheck()
     },
@@ -152,6 +166,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
             onStateChange: (event) => {
               switch (event.data) {
                 case yt.PlayerState.PLAYING:
+                  pendingPlayRef.current = false
                   clearAutoplayTimer()
                   dispatch({ type: 'SET_LOADING', loading: false })
                   dispatch({ type: 'SET_AUTOPLAY_BLOCKED', blocked: false })
@@ -159,7 +174,13 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
                   break
                 case yt.PlayerState.PAUSED:
                   dispatch({ type: 'SET_LOADING', loading: false })
-                  dispatch({ type: 'SET_PLAYING', playing: false })
+                  // A PAUSED event while we're waiting for a play to start (or
+                  // while a new video is loading) is the previous track being
+                  // stopped during a switch — honouring it would cancel the
+                  // song the user just clicked (the every-other-click bug).
+                  if (!pendingPlayRef.current && !loadInFlightRef.current) {
+                    dispatch({ type: 'SET_PLAYING', playing: false })
+                  }
                   break
                 case yt.PlayerState.BUFFERING:
                   dispatch({ type: 'SET_LOADING', loading: true })
@@ -173,6 +194,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
               }
             },
             onError: (event) => {
+              pendingPlayRef.current = false
+              loadInFlightRef.current = false
               loadedVideoIdRef.current = null
               clearAutoplayTimer()
               dispatch({ type: 'SET_ERROR', error: ytErrorToMessage(event.data) })
@@ -229,14 +252,19 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [state.ready, currentVideoId, state.retryNonce, loadAndPlay])
 
-  // Drive play/pause from state changes.
+  // Drive play/pause from state changes. Never call playVideo() while a
+  // different video is still loading — the request is rejected and the click
+  // appears to do nothing until a second press. loadAndPlay() starts playback
+  // once the clicked song has actually loaded.
   useEffect(() => {
     if (!state.ready || !currentVideoId) return
     const player = playerRef.current
     if (!player) return
     if (state.isPlaying) {
-      attemptPlay()
-      scheduleAutoplayCheck()
+      if (!loadInFlightRef.current) {
+        attemptPlay()
+        scheduleAutoplayCheck()
+      }
     } else {
       player.pauseVideo()
       clearAutoplayTimer()
@@ -248,6 +276,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     if (!state.ready || !currentVideoId) return
     if (state.replayNonce === replayHandledRef.current) return
     replayHandledRef.current = state.replayNonce
+    // Loading a different video already handles playback once it finishes;
+    // don't race it with a seek + play on the still-loading player.
+    if (loadInFlightRef.current) return
     if (currentVideoId !== loadedVideoIdRef.current) return
     const player = playerRef.current
     if (!player) return

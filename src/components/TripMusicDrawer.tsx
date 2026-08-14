@@ -228,7 +228,20 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
             {results.map((r) => {
               const isAdded = addedIds.has(r.videoId)
               return (
-                <li key={r.videoId} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                <li
+                  key={r.videoId}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => music.play(searchResultToPlayerSong(r))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      music.play(searchResultToPlayerSong(r))
+                    }
+                  }}
+                  className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 transition hover:border-accent/40 hover:bg-white/[0.06]"
+                  title={`Play ${r.title}`}
+                >
                   <ResultThumb src={r.thumbnailUrl} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-bone">{r.title}</p>
@@ -238,7 +251,10 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                     size="sm"
                     variant="ghost"
                     className="!min-h-8 !gap-1 !px-2.5"
-                    onClick={() => music.addToQueue(searchResultToPlayerSong(r))}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      music.addToQueue(searchResultToPlayerSong(r))
+                    }}
                     aria-label={`Add ${r.title} to the queue`}
                     title="Add to queue"
                   >
@@ -249,7 +265,10 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                     variant={isAdded ? 'outline' : 'ember'}
                     disabled={isAdded || adding === r.videoId}
                     loading={adding === r.videoId}
-                    onClick={() => void handleAdd(r.videoId)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      void handleAdd(r.videoId)
+                    }}
                   >
                     {isAdded ? (
                       <>
@@ -296,7 +315,20 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
               const duration = formatDuration(item.durationSeconds)
               const isCurrentSong = music.current?.song.videoId === item.youtubeVideoId
               return (
-                <li key={item.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                <li
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handlePlaySong(item)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      handlePlaySong(item)
+                    }
+                  }}
+                  className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 transition hover:border-accent/40 hover:bg-white/[0.06]"
+                  title={`Play ${item.title}`}
+                >
                   <ResultThumb src={item.thumbnailUrl} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-bone">{item.title}</p>
@@ -317,7 +349,10 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                       size="sm"
                       variant={music.state.isPlaying ? 'outline' : 'ember'}
                       loading={!!music.state.loading && music.state.isPlaying}
-                      onClick={music.togglePlay}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        music.togglePlay()
+                      }}
                       aria-label={music.state.isPlaying ? `Pause ${item.title}` : `Resume ${item.title}`}
                     >
                       {music.state.isPlaying ? <Pause size={13} aria-hidden="true" /> : <Play size={13} aria-hidden="true" />}
@@ -327,7 +362,10 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                     <Button
                       size="sm"
                       variant="ember"
-                      onClick={() => handlePlaySong(item)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handlePlaySong(item)
+                      }}
                       aria-label={`Play ${item.title}`}
                     >
                       <Play size={13} aria-hidden="true" />
@@ -340,7 +378,10 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                       variant="danger"
                       loading={removing === item.songId}
                       disabled={removing !== null}
-                      onClick={() => void handleRemove(item)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void handleRemove(item)
+                      }}
                       aria-label={`Remove ${item.title} from the trip`}
                     >
                       <Trash2 size={13} aria-hidden="true" />

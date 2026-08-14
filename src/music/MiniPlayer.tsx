@@ -38,7 +38,7 @@ export default function MiniPlayer() {
             type="button"
             onClick={music.openFullPlayer}
             aria-label={`Open full music player — ${current.song.title} by ${current.song.artist}`}
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-zinc-800/40 focus-visible:outline-2 focus-visible:outline-cyan-400 active:scale-[0.99]"
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-zinc-800/40 focus-visible:outline-2 focus-visible:outline-accent active:scale-[0.99]"
           >
             <span className="shrink-0">
               {current.song.thumbnailUrl !== null ? (
@@ -60,7 +60,7 @@ export default function MiniPlayer() {
               <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.25em] text-zinc-500">
                 &gt; Now Playing
                 {state.isPlaying ? (
-                  <Equalizer playing bars={3} className="h-2.5" barClassName="bg-cyan-400" />
+                  <Equalizer playing bars={3} className="h-2.5" barClassName="bg-accent" />
                 ) : (
                   <span className="size-1.5 rounded-full bg-zinc-600" aria-hidden="true" />
                 )}
@@ -78,7 +78,7 @@ export default function MiniPlayer() {
                 role="button"
                 tabIndex={0}
                 aria-label={state.isPlaying ? 'Pause' : 'Play'}
-                className="grid size-9 place-items-center rounded-md border border-zinc-700 bg-zinc-800/70 text-zinc-100 transition hover:border-cyan-500/50 hover:text-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-400"
+                className="grid size-9 place-items-center rounded-md border border-zinc-700 bg-zinc-800/70 text-zinc-100 transition hover:border-accent/50 hover:text-accent focus-visible:outline-2 focus-visible:outline-accent"
                 onClick={(e) => {
                   e.stopPropagation()
                   if (state.needsPlayPrompt && !state.isPlaying) music.resumePlay()
@@ -96,14 +96,14 @@ export default function MiniPlayer() {
                 {state.isPlaying ? (
                   <Pause size={15} fill="currentColor" />
                 ) : (
-                  <Play size={15} fill="currentColor" className="ml-0.5" />
+                  <Play size={15} fill="currentColor" />
                 )}
               </span>
               <span
                 role="button"
                 tabIndex={0}
                 aria-label="Next song"
-                className="hidden size-9 place-items-center rounded-md text-zinc-400 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-cyan-400 sm:grid"
+                className="hidden size-9 place-items-center rounded-md text-zinc-400 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-accent sm:grid"
                 onClick={(e) => {
                   e.stopPropagation()
                   music.next()
@@ -125,7 +125,7 @@ export default function MiniPlayer() {
           {/* progress */}
           <div className="relative h-[3px] w-full bg-zinc-800" aria-hidden="true">
             <div
-              className="h-full bg-cyan-400 transition-[width] duration-300 ease-linear"
+              className="h-full bg-accent transition-[width] duration-300 ease-linear"
               style={{ width: `${pct}%` }}
             />
           </div>

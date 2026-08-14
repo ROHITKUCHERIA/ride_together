@@ -16,7 +16,9 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import Equalizer from '../components/Equalizer'
+import TripMusicSearch from '../components/TripMusicSearch'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import { useMusicPlayer, type MusicPlayerContextValue } from './context'
 import { formatTime } from './playerState'
@@ -74,13 +76,13 @@ function SeekBar({ value, max, ariaLabel, onChange, className }: SeekBarProps) {
     >
       <div className="absolute top-1/2 h-[3px] w-full -translate-y-1/2 overflow-hidden rounded-full bg-zinc-800">
         <div
-          className="h-full rounded-full bg-cyan-400 transition-[width] duration-100 ease-linear"
+          className="h-full rounded-full bg-accent transition-[width] duration-100 ease-linear"
           style={{ width: `${pct}%` }}
         />
       </div>
       <span
         aria-hidden="true"
-        className="absolute top-1/2 size-2.5 -translate-y-1/2 rounded-full bg-cyan-400 shadow-[0_0_0_3px_rgba(34,211,238,0.18)] transition-transform duration-150 group-hover:scale-125"
+        className="absolute top-1/2 size-2.5 -translate-y-1/2 rounded-full bg-accent shadow-[0_0_0_3px_var(--color-accent-soft)] transition-transform duration-150 group-hover:scale-125"
         style={{ left: `calc(${pct}% - 5px)` }}
       />
     </div>
@@ -100,11 +102,11 @@ function LeftRail({ music, onGoQueue }: LeftRailProps) {
         <p className="px-2.5 font-mono text-[9px] uppercase tracking-[0.3em] text-zinc-500">Music</p>
         <nav className="mt-2 space-y-0.5" aria-label="Music player sections">
           <div className="flex items-center gap-2.5 rounded-md bg-zinc-800/60 px-2.5 py-2 text-[13px] font-medium text-zinc-100">
-            <Play size={12} className="shrink-0 text-cyan-400" fill="currentColor" aria-hidden="true" />
+            <Play size={12} className="shrink-0 text-accent" fill="currentColor" aria-hidden="true" />
             <span>Now Playing</span>
             {state.isPlaying ? (
               <span className="ml-auto" aria-label="Playing">
-                <Equalizer playing bars={3} className="h-3" barClassName="bg-cyan-400" />
+                <Equalizer playing bars={3} className="h-3" barClassName="bg-accent" />
               </span>
             ) : (
               <span className="ml-auto size-1.5 rounded-full bg-zinc-600" aria-hidden="true" />
@@ -113,7 +115,7 @@ function LeftRail({ music, onGoQueue }: LeftRailProps) {
           <button
             type="button"
             onClick={onGoQueue}
-            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-zinc-400 transition hover:bg-zinc-800/40 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-cyan-400"
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-zinc-400 transition hover:bg-zinc-800/40 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-accent"
           >
             <ListMusic size={12} className="shrink-0" aria-hidden="true" />
             <span>Up Next</span>
@@ -131,7 +133,7 @@ function LeftRail({ music, onGoQueue }: LeftRailProps) {
           </div>
           <div className="flex items-center justify-between gap-3">
             <dt className="text-zinc-500">status</dt>
-            <dd className={state.isPlaying ? 'text-cyan-400' : 'text-zinc-300'}>
+            <dd className={state.isPlaying ? 'text-accent' : 'text-zinc-300'}>
               {state.loading ? 'loading' : state.isPlaying ? 'playing' : 'paused'}
             </dd>
           </div>
@@ -191,7 +193,7 @@ function MainPlayer({ music }: { music: MusicPlayerContextValue }) {
 
         {/* waveform */}
         <div className="mt-6 opacity-70">
-          <Equalizer playing={state.isPlaying} bars={36} className="h-6 items-center gap-[3px]" barClassName="bg-cyan-400/60" />
+          <Equalizer playing={state.isPlaying} bars={36} className="h-6 items-center gap-[3px]" barClassName="bg-accent/60" />
         </div>
 
         {/* status rows: error / prompt / loading */}
@@ -214,7 +216,7 @@ function MainPlayer({ music }: { music: MusicPlayerContextValue }) {
           <button
             type="button"
             onClick={music.resumePlay}
-            className="mt-6 flex items-center gap-2 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3.5 py-2 font-mono text-[11px] uppercase tracking-wider text-cyan-300 transition hover:bg-cyan-500/15 focus-visible:outline-2 focus-visible:outline-cyan-400"
+            className="mt-6 flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-3.5 py-2 font-mono text-[11px] uppercase tracking-wider text-accent transition hover:bg-accent/15 focus-visible:outline-2 focus-visible:outline-accent"
           >
             <Play size={12} fill="currentColor" aria-hidden="true" />
             Tap play
@@ -235,35 +237,34 @@ function MainPlayer({ music }: { music: MusicPlayerContextValue }) {
         </div>
 
         {/* controls */}
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex w-full items-center justify-center gap-3 sm:gap-4">
           <button
             type="button"
             onClick={music.prev}
             aria-label="Previous song"
-            className="grid size-11 place-items-center rounded-lg text-zinc-400 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-cyan-400"
+            className="grid size-11 shrink-0 place-items-center rounded-lg text-zinc-400 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-accent active:scale-95"
           >
             <SkipBack size={18} />
           </button>
 
-          <motion.button
+          <button
             type="button"
-            whileTap={{ scale: 0.95 }}
             onClick={music.togglePlay}
             aria-label={state.isPlaying ? 'Pause' : 'Play'}
-            className="grid size-14 place-items-center rounded-full border border-zinc-700 bg-zinc-900 text-zinc-100 shadow-[0_10px_32px_-16px_rgba(0,0,0,0.9)] transition hover:scale-[1.04] hover:border-cyan-500/50 focus-visible:outline-2 focus-visible:outline-cyan-400"
+            className="grid size-14 shrink-0 place-items-center rounded-full border border-zinc-700 bg-zinc-900 text-zinc-100 shadow-[0_10px_32px_-16px_rgba(0,0,0,0.9)] transition hover:border-accent/50 hover:text-accent active:scale-95 focus-visible:outline-2 focus-visible:outline-accent"
           >
             {state.isPlaying ? (
               <Pause size={20} fill="currentColor" aria-hidden="true" />
             ) : (
-              <Play size={20} fill="currentColor" className="ml-0.5" aria-hidden="true" />
+              <Play size={20} fill="currentColor" aria-hidden="true" />
             )}
-          </motion.button>
+          </button>
 
           <button
             type="button"
             onClick={music.next}
             aria-label="Next song"
-            className="grid size-11 place-items-center rounded-lg text-zinc-400 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-cyan-400"
+            className="grid size-11 shrink-0 place-items-center rounded-lg text-zinc-400 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-accent active:scale-95"
           >
             <SkipForward size={18} />
           </button>
@@ -275,7 +276,7 @@ function MainPlayer({ music }: { music: MusicPlayerContextValue }) {
             type="button"
             onClick={music.toggleMute}
             aria-label={state.muted ? 'Unmute' : 'Mute'}
-            className="shrink-0 text-zinc-400 transition hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-cyan-400"
+            className="shrink-0 text-zinc-400 transition hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-accent"
           >
             {state.muted || state.volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
@@ -297,26 +298,34 @@ interface QueuePanelProps {
   music: MusicPlayerContextValue
   menuKey: string | null
   onMenuKey: (key: string | null) => void
+  tripId?: string | null
 }
 
-function QueuePanel({ music, menuKey, onMenuKey }: QueuePanelProps) {
+function QueuePanel({ music, menuKey, onMenuKey, tripId }: QueuePanelProps) {
   const { state } = music
   return (
     <div className="flex flex-col">
-      <div className="sticky top-0 z-[1] flex items-center justify-between border-b border-zinc-800/80 bg-zinc-950/90 px-4 py-3 backdrop-blur">
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-400">Up Next</p>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-zinc-600">{state.queue.length} tracks</span>
-          {state.queue.length > 1 ? (
-            <button
-              type="button"
-              onClick={music.clearQueue}
-              aria-label="Clear queue"
-              className="rounded-md p-1.5 text-zinc-500 transition hover:bg-zinc-800/60 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-cyan-400"
-            >
-              <Trash2 size={13} />
-            </button>
-          ) : null}
+      <div className="sticky top-0 z-[1] border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur">
+        {tripId ? (
+          <div className="px-3 pt-3">
+            <TripMusicSearch tripId={tripId} variant="inline" playMode="enqueue" />
+          </div>
+        ) : null}
+        <div className="flex items-center justify-between px-4 py-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-400">Up Next</p>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10px] text-zinc-600">{state.queue.length} tracks</span>
+            {state.queue.length > 1 ? (
+              <button
+                type="button"
+                onClick={music.clearQueue}
+                aria-label="Clear queue"
+                className="rounded-md p-1.5 text-zinc-500 transition hover:bg-zinc-800/60 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <Trash2 size={13} />
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -354,7 +363,7 @@ function QueueRow({ item, index, isCurrent, music, menuOpen, onMenu }: QueueRowP
   return (
     <li className={`group relative flex items-center gap-2.5 rounded-md px-2 py-2 transition ${isCurrent ? 'bg-zinc-800/50' : 'hover:bg-zinc-800/30'}`}>
       {isCurrent ? (
-        <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-cyan-400" aria-hidden="true" />
+        <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-accent" aria-hidden="true" />
       ) : null}
 
       <span className="w-5 shrink-0 text-right font-mono text-[10px] text-zinc-600">{String(index + 1).padStart(2, '0')}</span>
@@ -363,7 +372,7 @@ function QueueRow({ item, index, isCurrent, music, menuOpen, onMenu }: QueueRowP
         type="button"
         onClick={() => music.playIndex(index)}
         aria-label={`Play ${item.song.title}`}
-        className="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-2 focus-visible:outline-cyan-400"
+        className="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-2 focus-visible:outline-accent"
       >
         {item.song.thumbnailUrl !== null ? (
           <img
@@ -388,7 +397,7 @@ function QueueRow({ item, index, isCurrent, music, menuOpen, onMenu }: QueueRowP
 
       {isCurrent ? (
         <span className="shrink-0" aria-label="Now playing">
-          <Equalizer playing bars={4} className="h-3" barClassName="bg-cyan-400" />
+          <Equalizer playing bars={4} className="h-3" barClassName="bg-accent" />
         </span>
       ) : null}
 
@@ -402,7 +411,7 @@ function QueueRow({ item, index, isCurrent, music, menuOpen, onMenu }: QueueRowP
           onClick={onMenu}
           aria-label={`Options for ${item.song.title}`}
           aria-expanded={menuOpen}
-          className="grid size-7 place-items-center rounded-md text-zinc-600 transition hover:bg-zinc-700/40 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-cyan-400"
+          className="grid size-7 place-items-center rounded-md text-zinc-600 transition hover:bg-zinc-700/40 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-accent"
         >
           <MoreVertical size={14} />
         </button>
@@ -414,14 +423,14 @@ function QueueRow({ item, index, isCurrent, music, menuOpen, onMenu }: QueueRowP
               <button
                 type="button"
                 onClick={() => music.playIndex(index)}
-                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[12px] text-zinc-300 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-cyan-400"
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[12px] text-zinc-300 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <Play size={12} aria-hidden="true" /> Play
               </button>
               <button
                 type="button"
                 onClick={() => music.playSongNext(item.song)}
-                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[12px] text-zinc-300 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-cyan-400"
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[12px] text-zinc-300 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <ListMusic size={12} aria-hidden="true" /> Play next
               </button>
@@ -448,8 +457,12 @@ export default function FullPlayer() {
   const music = useMusicPlayer()
   const { state, current } = music
   const isMobile = useIsMobile()
+  const location = useLocation()
   const [menuKey, setMenuKey] = useState<string | null>(null)
   const queueRef = useRef<HTMLElement | null>(null)
+
+  const tripMatch = /^\/app\/trips\/([^/]+)/.exec(location.pathname)
+  const tripId: string | null = tripMatch ? tripMatch[1] : null
 
   const open = state.fullPlayerOpen && current !== null
 
@@ -496,12 +509,12 @@ export default function FullPlayer() {
           {/* header */}
           <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-800/80 px-4 sm:px-6">
             <div className="flex items-center gap-2.5">
-              <AudioLines size={15} className="text-cyan-400" aria-hidden="true" />
+              <AudioLines size={15} className="text-accent" aria-hidden="true" />
               <span className="font-mono text-[11px] uppercase tracking-[0.32em] text-zinc-400">TripRoom / Music</span>
             </div>
             <div className="flex items-center gap-4">
               <span className="hidden items-center gap-2 sm:flex">
-                <span className={`size-1.5 rounded-full ${state.isPlaying ? 'bg-cyan-400' : 'bg-zinc-600'}`} aria-hidden="true" />
+                <span className={`size-1.5 rounded-full ${state.isPlaying ? 'bg-accent' : 'bg-zinc-600'}`} aria-hidden="true" />
                 <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
                   {state.loading ? 'loading' : state.isPlaying ? 'playing' : 'paused'}
                 </span>
@@ -510,7 +523,7 @@ export default function FullPlayer() {
                 type="button"
                 onClick={music.closeFullPlayer}
                 aria-label="Close music player"
-                className="grid size-9 place-items-center rounded-md text-zinc-400 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-cyan-400"
+                className="grid size-9 place-items-center rounded-md text-zinc-400 transition hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <X size={16} />
               </button>
@@ -527,7 +540,7 @@ export default function FullPlayer() {
               <MainPlayer music={music} />
               {/* queue on mobile/tablet single column */}
               <div className="border-t border-zinc-800/80 md:hidden">
-                <QueuePanel music={music} menuKey={menuKey} onMenuKey={setMenuKey} />
+                <QueuePanel music={music} menuKey={menuKey} onMenuKey={setMenuKey} tripId={tripId} />
               </div>
             </main>
 
@@ -535,7 +548,7 @@ export default function FullPlayer() {
               ref={queueRef}
               className="hidden min-h-0 flex-col overflow-y-auto border-l border-zinc-800/80 md:flex"
             >
-              <QueuePanel music={music} menuKey={menuKey} onMenuKey={setMenuKey} />
+              <QueuePanel music={music} menuKey={menuKey} onMenuKey={setMenuKey} tripId={tripId} />
             </aside>
           </div>
         </motion.div>

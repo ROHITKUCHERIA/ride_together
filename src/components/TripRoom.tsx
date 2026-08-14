@@ -13,6 +13,7 @@ import RidersDrawer from './RidersDrawer'
 import TripHero from './TripHero'
 import TripInfoDrawer from './TripInfoDrawer'
 import TripMusicDrawer from './TripMusicDrawer'
+import TripMusicSearch from './TripMusicSearch'
 import TripNavigation from './TripNavigation'
 import ManageTripDrawer from '../app/components/ManageTripDrawer'
 import { trip as mockTrip } from '../data/mockData'
@@ -205,6 +206,7 @@ export default function TripRoom({
           currentUserId={currentUserId}
         />
       ) : null}
+      {tripId ? <TripMusicSearch tripId={tripId} /> : null}
       <RidersDrawer open={drawer === 'riders'} onClose={() => setDrawer(null)} riders={riders} onlineCount={onlineCount} />
       <TripInfoDrawer
         open={drawer === 'tripinfo'}
