@@ -29,9 +29,9 @@ export default function Profile() {
     setLoadError(null)
     try {
       const me = await getMe()
-      setName(me.name)
-      setAvatarUrl(me.avatarUrl ?? '')
-      setEmail(me.email)
+      setName(me?.name ?? '')
+      setAvatarUrl(me?.avatarUrl ?? '')
+      setEmail(me?.email ?? '')
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Unable to load your profile.')
     } finally {

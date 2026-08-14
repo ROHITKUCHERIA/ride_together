@@ -2,17 +2,23 @@ interface EqualizerProps {
   playing: boolean
   bars?: number
   className?: string
+  barClassName?: string
 }
 
 const DELAYS = [0, 0.18, 0.36, 0.54, 0.27]
 
-export default function Equalizer({ playing, bars = 4, className }: EqualizerProps) {
+export default function Equalizer({
+  playing,
+  bars = 4,
+  className,
+  barClassName = 'bg-bone/80',
+}: EqualizerProps) {
   return (
     <span className={`inline-flex h-3.5 items-end gap-[2px] ${className ?? ''}`} aria-hidden="true">
       {Array.from({ length: bars }).map((_, i) => (
         <span
           key={i}
-          className="w-[2px] rounded-full bg-bone/80"
+          className={`w-[2px] rounded-full ${barClassName}`}
           style={{
             height: '100%',
             transformOrigin: 'bottom',

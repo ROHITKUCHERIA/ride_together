@@ -115,14 +115,22 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   )
 
   // Create the single player instance on mount; destroy it on unmount.
+  // React owns the wrapper div (playerElRef); the actual player container is
+  // created imperatively so the IFrame API's in-place element swap (container
+  // -> iframe) never touches a DOM node React tracks.
   useEffect(() => {
     let cancelled = false
+    const wrapper = playerElRef.current
+    if (!wrapper) return
+    const container = document.createElement('div')
+    container.style.width = '640px'
+    container.style.height = '360px'
+    wrapper.appendChild(container)
+
     loadYouTubeIframeApi()
       .then((yt) => {
-        if (cancelled) return
-        const el = playerElRef.current
-        if (!el) return
-        const player = new yt.Player(el, {
+        if (cancelled || !container.isConnected) return
+        const player = new yt.Player(container, {
           height: 360,
           width: 640,
           playerVars: {
@@ -192,6 +200,13 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       }
       playerRef.current = null
       loadedVideoIdRef.current = null
+      try {
+        // The IFrame API replaced `container` with an iframe (which destroy()
+        // already removed); remove() is a no-op if it is already detached.
+        container.remove()
+      } catch {
+        // Already detached.
+      }
     }
   }, [clearAutoplayTimer])
 

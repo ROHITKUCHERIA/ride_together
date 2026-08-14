@@ -31,12 +31,16 @@ export function loadYouTubeIframeApi(): Promise<YTNamespace> {
     script.async = true
     script.referrerPolicy = 'origin'
     script.onerror = () => {
+      window.onYouTubeIframeAPIReady = previousReady
       reject(new Error('Could not load the YouTube player script.'))
     }
     document.head.appendChild(script)
 
     window.setTimeout(() => {
-      if (!window.YT) reject(new Error('The YouTube player took too long to load.'))
+      if (!window.YT) {
+        window.onYouTubeIframeAPIReady = previousReady
+        reject(new Error('The YouTube player took too long to load.'))
+      }
     }, LOAD_TIMEOUT_MS)
   }).catch((err: unknown) => {
     apiLoadPromise = null

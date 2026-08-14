@@ -25,6 +25,9 @@ export default function TripRoomPage() {
     setError(null)
     try {
       const [t, m] = await Promise.all([getTrip(tripId), getTripMembers(tripId)])
+      if (!t || !Array.isArray(m)) {
+        throw new Error('Unable to load this trip.')
+      }
       setTrip(t)
       setMembers(m)
     } catch (err) {
@@ -40,18 +43,26 @@ export default function TripRoomPage() {
 
   const refresh = useCallback(async () => {
     if (!tripId) return
-    const [t, m] = await Promise.all([getTrip(tripId), getTripMembers(tripId)])
-    setTrip(t)
-    setMembers(m)
+    try {
+      const [t, m] = await Promise.all([getTrip(tripId), getTripMembers(tripId)])
+      if (!t || !Array.isArray(m)) {
+        throw new Error('Unable to load this trip.')
+      }
+      setTrip(t)
+      setMembers(m)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load this trip.')
+    }
   }, [tripId])
 
   const role = useMemo<MemberRole | undefined>(
-    () => members.find((m) => m.id === user?.id)?.role,
+    () => (members ?? []).find((m) => m.id === user?.id)?.role,
     [members, user?.id],
   )
 
   const derived = useMemo(
-    () => (trip && user ? toDemoTrip(trip, members, user.id) : null),
+    () => (trip && user ? toDemoTrip(trip, members ?? [], user.id) : null),
     [trip, members, user],
   )
 

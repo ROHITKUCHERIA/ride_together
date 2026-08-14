@@ -28,6 +28,35 @@ export function setSessionExpiredHandler(handler: (() => void) | null): void {
 
 let refreshInFlight: Promise<boolean> | null = null
 
+/** Upper bound for a single HTTP request. A dropped network (e.g. switching
+ * Wi-Fi) can otherwise leave a page stuck loading indefinitely. */
+const REQUEST_TIMEOUT_MS = 15_000
+
+/** fetch() with a hard timeout. A network transition that silently swallows
+ * requests surfaces as a network error instead of a hanging promise. */
+async function fetchWithTimeout(input: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new TypeError('The request timed out. Check your connection and try again.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// Network is restored after a network switch — let any stale in-flight refresh
+// settle so past failures never poison the next request.
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    refreshInFlight = null
+  })
+}
+
 /**
  * Single-flight refresh: concurrent 401s share one refresh attempt so an
  * expired access token is never refreshed more than once per expiry window.
@@ -45,7 +74,7 @@ async function doRefresh(): Promise<boolean> {
   const refreshToken = getRefreshToken()
   if (!refreshToken) return false
   try {
-    const res = await fetch(`${API_URL}/api/auth/refresh`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
@@ -55,7 +84,9 @@ async function doRefresh(): Promise<boolean> {
     if (!json.data) return false
     setTokens(json.data.accessToken, json.data.refreshToken)
     return true
-  } catch {
+  } catch (err) {
+    // A network failure while refreshing must not destroy a still-valid session.
+    if (err instanceof TypeError) throw err
     return false
   }
 }
@@ -68,7 +99,11 @@ async function doRequest<T>(path: string, options: RequestOptions): Promise<T> {
   const auth = options.auth !== false
   const token = getAccessToken()
 
-  const res = await fetch(`${API_URL}${path}`, {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new TypeError('You are offline. Check your connection and try again.')
+  }
+
+  const res = await fetchWithTimeout(`${API_URL}${path}`, {
     method: options.method ?? 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -93,6 +128,12 @@ async function doRequest<T>(path: string, options: RequestOptions): Promise<T> {
     const errorCode = json?.errorCode ?? ''
     const message = json?.message ?? ''
     throw new ApiError(status, errorCode, friendlyError(status, errorCode, message))
+  }
+
+  // A 200 with a body that is not JSON is not valid API data — it usually means
+  // a proxy/captive-portal page answered while the backend was unreachable.
+  if (text && json === null) {
+    throw new TypeError('The server returned an invalid response. Please try again.')
   }
 
   if (json && json.success && json.data !== undefined) {
@@ -120,6 +161,9 @@ export async function apiRequest<T>(
   } catch (err) {
     if (!retry) throw err
     if (err instanceof ApiError && err.status === 401) {
+      // A refresh that fails with a network error (e.g. mid network switch)
+      // rejects here and propagates as a network error — the session is still
+      // valid, so it must not be signed out.
       const refreshed = await refreshSession()
       if (refreshed) {
         return doRequest<T>(path, { ...options, retryOnAuth: false })

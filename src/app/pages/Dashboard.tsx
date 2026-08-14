@@ -31,7 +31,7 @@ export default function Dashboard() {
     setState({ kind: 'loading' })
     try {
       const page = await listTrips(1, 50)
-      setState({ kind: 'ready', trips: page.data })
+      setState({ kind: 'ready', trips: Array.isArray(page?.data) ? page.data : [] })
     } catch (err) {
       setState({
         kind: 'error',
@@ -100,7 +100,7 @@ export default function Dashboard() {
           <Spinner label="Loading your trips..." />
         ) : state.kind === 'error' ? (
           <ErrorState message={state.message} onRetry={load} />
-        ) : state.trips.length === 0 ? (
+        ) : (state.trips ?? []).length === 0 ? (
           <EmptyState
             icon={<Compass size={26} />}
             title="No trips yet"
