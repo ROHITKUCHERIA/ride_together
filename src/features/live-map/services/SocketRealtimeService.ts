@@ -55,6 +55,8 @@ export class SocketRealtimeService implements RealtimeService {
   private socket: Socket | null = null
   private ctx: AuthContext | null = null
   private startSent = false
+  private hadConnected = false
+  private lastPublished: LocationUpdate | null = null
   private riders = new Map<string, RiderLocation>()
   private riderListener: ((riders: RiderLocation[]) => void) | null = null
   private connectionListener: ((state: RealtimeConnection) => void) | null = null
@@ -68,6 +70,7 @@ export class SocketRealtimeService implements RealtimeService {
   }
 
   async connect(tripId?: string): Promise<void> {
+    this.setConnection('connecting')
     try {
       this.ctx = await ensureAuthContext(tripId ?? this.tripIdOverride)
     } catch (err) {
@@ -88,8 +91,16 @@ export class SocketRealtimeService implements RealtimeService {
     const s = this.socket
     if (!s) return
 
-    s.on('connect', () => this.setConnection('connected'))
-    s.on('connect_error', () => this.setConnection('offline'))
+    s.on('connect', () => {
+      this.hadConnected = true
+      this.setConnection('connected')
+    })
+    // connect_error fires on the initial attempt AND on failed reconnects —
+    // only treat it as offline when we have never established a session.
+    s.on('connect_error', () => {
+      this.setConnection(this.hadConnected ? 'reconnecting' : 'offline')
+    })
+    s.on('reconnect_failed', () => this.setConnection('offline'))
     s.on('disconnect', (reason) => {
       if (reason === 'io server disconnect') this.setConnection('offline')
       else this.setConnection('reconnecting')
@@ -99,6 +110,13 @@ export class SocketRealtimeService implements RealtimeService {
     // been verified server-side. This is when it is safe to join the room.
     s.on('authenticated', () => {
       if (this.ctx) s.emit('trip:join', { tripId: this.ctx.tripId })
+      // Restore location sharing state across reconnects: re-announce the
+      // start and re-send the last known fix so presence stays LIVE and the
+      // marker does not wait for the next GPS callback.
+      if (this.ctx && this.lastPublished) {
+        s.emit('location:start', { tripId: this.ctx.tripId })
+        s.emit('location:update', this.toWire(this.lastPublished))
+      }
     })
 
     s.on('trip:joined', (payload: { riders: ServerRider[] }) => {
@@ -158,21 +176,45 @@ export class SocketRealtimeService implements RealtimeService {
       s.emit('location:start', { tripId: ctx.tripId })
       this.startSent = true
     }
-    s.emit('location:update', {
-      tripId: ctx.tripId,
+    this.lastPublished = update
+    s.emit('location:update', this.toWire(update))
+  }
+
+  stopSharing(): void {
+    const s = this.socket
+    const ctx = this.ctx
+    if (!s || !ctx) return
+    this.lastPublished = null
+    if (s.connected) s.emit('location:stop', { tripId: ctx.tripId })
+    this.startSent = false
+  }
+
+  private toWire(update: LocationUpdate): {
+    tripId: string
+    latitude: number
+    longitude: number
+    accuracy: number
+    speed: number | null
+    heading: number | null
+    timestamp: number
+  } {
+    return {
+      tripId: this.ctx?.tripId ?? update.tripId,
       latitude: update.latitude,
       longitude: update.longitude,
       accuracy: update.accuracy,
       speed: update.speed ?? null,
       heading: update.heading ?? null,
       timestamp: update.timestamp,
-    })
+    }
   }
 
   disconnect(): void {
     this.socket?.disconnect()
     this.socket = null
     this.startSent = false
+    this.hadConnected = false
+    this.lastPublished = null
     this.riders.clear()
     this.setConnection('offline')
   }

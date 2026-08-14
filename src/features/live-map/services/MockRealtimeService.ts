@@ -154,6 +154,10 @@ export class MockRealtimeService implements RealtimeService {
     }
   }
 
+  stopSharing(): void {
+    this.meOverride = null
+  }
+
   private scheduleReconnect(): void {
     this.reconnectTimer = setTimeout(() => {
       this.setConnection('reconnecting')

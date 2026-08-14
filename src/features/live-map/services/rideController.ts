@@ -79,6 +79,7 @@ class RideController {
   pauseLocationSharing(): void {
     this.stopLocation?.()
     this.stopLocation = null
+    this.realtime?.stopSharing()
     gpsStore.setMode('paused')
   }
 

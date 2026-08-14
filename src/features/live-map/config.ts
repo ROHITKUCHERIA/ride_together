@@ -37,11 +37,13 @@ export const MIN_ACCURACY_METERS = num(import.meta.env.VITE_MIN_ACCURACY_METERS,
 export const GPS_TIMEOUT_MS = num(import.meta.env.VITE_GPS_TIMEOUT_MS, 15000)
 export const GPS_MAXIMUM_AGE_MS = num(import.meta.env.VITE_GPS_MAXIMUM_AGE_MS, 0)
 
-/** 0–10s LIVE · 10–30s DELAYED · 30–60s STALE · >60s OFFLINE */
+/** 0–15s LIVE · 15–60s DELAYED · 60–90s STALE · >90s OFFLINE
+ *  (aligns with the backend rider-status thresholds: <15 LIVE, 15–60 DELAYED,
+ *   >60 OFFLINE; STALE is the client-side transitional band before OFFLINE). */
 export const PRESENCE_THRESHOLDS_MS = {
-  live: num(import.meta.env.VITE_PRESENCE_LIVE_MS, 10_000),
-  delayed: num(import.meta.env.VITE_PRESENCE_DELAYED_MS, 30_000),
-  stale: num(import.meta.env.VITE_PRESENCE_STALE_MS, 60_000),
+  live: num(import.meta.env.VITE_PRESENCE_LIVE_MS, 15_000),
+  delayed: num(import.meta.env.VITE_PRESENCE_DELAYED_MS, 60_000),
+  stale: num(import.meta.env.VITE_PRESENCE_STALE_MS, 90_000),
 }
 
 export const GROUP_SPREADING_THRESHOLD_METERS = num(import.meta.env.VITE_GROUP_SPREADING_THRESHOLD_METERS, 2000)

@@ -3,7 +3,7 @@ import { Marker, Polyline } from 'react-leaflet'
 import { divIcon } from 'leaflet'
 import { tripRoute } from '../../../data/mockData'
 import { arrowPoints, fetchRoadRoute, type RoadRoute } from '../services/routing'
-import { buildCityIcon } from './markers'
+import { buildDestinationPin, buildOriginPin } from './markers'
 
 interface RouteLayerProps {
   route?: [number, number][] | null
@@ -68,8 +68,8 @@ export default function RouteLayer({ route }: RouteLayerProps) {
       {arrows.map((a, i) => (
         <Marker key={i} position={[a.lat, a.lng]} icon={arrowIcon(a.angle)} interactive={false} />
       ))}
-      <Marker position={start} icon={buildCityIcon(hasCoords ? 'START' : 'HYD', '#3ddc84')} interactive={false} />
-      <Marker position={end} icon={buildCityIcon(hasCoords ? 'DEST' : 'GOA', '#ff6b2c')} interactive={false} />
+      <Marker position={start} icon={buildOriginPin(hasCoords ? 'START' : 'HYD')} interactive={false} />
+      <Marker position={end} icon={buildDestinationPin(hasCoords ? 'DEST' : 'GOA')} interactive={false} />
     </>
   )
 }

@@ -84,10 +84,15 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
     )
   }, [selectedRider, me])
 
-  /* ---------- controller lifecycle ---------- */
+  /* ---------- controller lifecycle ----------
+     Backend mode: the TripRoom owns the realtime connection (useTripRealtime),
+     so the map only reads the shared stores and must never dispose it on close.
+     Demo mode keeps its own in-browser mock simulation. */
   useEffect(() => {
-    rideController.init(tripId ?? currentTrip.id, { backend: !!useBackend })
-    return () => rideController.dispose()
+    if (!useBackend) {
+      rideController.init(tripId ?? currentTrip.id, { backend: false })
+      return () => rideController.dispose()
+    }
   }, [tripId, useBackend, currentTrip.id])
 
   /* ---------- fit group on open ---------- */
@@ -212,7 +217,7 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
         <div className="pointer-events-auto hidden items-center gap-2 rounded-full border border-white/12 bg-night/70 px-4 py-2 backdrop-blur-xl md:flex">
           <Radio size={13} className={connection === 'connected' ? 'text-live' : 'animate-pulse text-sunset'} aria-hidden="true" />
           <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-bone/85">
-            {connection === 'connected' ? 'Live Map' : connection === 'reconnecting' ? 'Reconnecting…' : 'Offline'}
+            {connection === 'connected' ? 'Live Map' : connection === 'connecting' ? 'Connecting…' : connection === 'reconnecting' ? 'Reconnecting…' : 'Offline'}
           </span>
         </div>
         <span className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-night/70 px-3.5 py-2 text-[11px] font-medium text-bone/85 backdrop-blur-xl">

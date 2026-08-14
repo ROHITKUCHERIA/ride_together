@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import ConnectionStatus from './ConnectionStatus'
 import CursorSpotlight from './CursorSpotlight'
@@ -18,6 +18,8 @@ import TripNavigation from './TripNavigation'
 import ManageTripDrawer from '../app/components/ManageTripDrawer'
 import { trip as mockTrip } from '../data/mockData'
 import { useMusicPlayer } from '../music/context'
+import { useTripRealtime } from '../features/live-map/hooks/useTripRealtime'
+import { rideController } from '../features/live-map/services/rideController'
 import type { ConnectionState, DrawerKind, GpsState, Playlist, Rider, TripInfo } from '../types'
 import type { MemberRole, Trip, TripMember } from '../types/api'
 import type { TripMapRoute } from '../app/tripInfo'
@@ -60,19 +62,30 @@ export default function TripRoom({
   const [tripMusicOpen, setTripMusicOpen] = useState(false)
   const [mapOpen, setMapOpen] = useState(false)
 
-  const [riders, setRiders] = useState<Rider[]>(thisTrip.riders)
   const [playlists, setPlaylists] = useState<Playlist[]>(thisTrip.playlists)
+
+  /* Real backend trip → real Socket.IO + GPS. The realtime service owns the
+     socket connection, room membership and GPS watcher; the room just
+     subscribes to the same stores the live map uses. */
+  const realtime = useTripRealtime({ tripId, status: apiTrip?.status, roster: thisTrip.riders })
+
+  const [riders, setRiders] = useState<Rider[]>(thisTrip.riders)
   const [connection, setConnection] = useState<ConnectionState>('connected')
   const [gps, setGps] = useState<GpsState>('tracking')
-
-  const ridersRef = useRef(riders)
-  ridersRef.current = riders
 
   /* sync presentation data when the source trip changes (e.g. after refresh) */
   useEffect(() => {
     setRiders(thisTrip.riders)
     setPlaylists(thisTrip.playlists)
   }, [thisTrip])
+
+  // Real-mode realtime replaces the simulated room state entirely.
+  useEffect(() => {
+    if (!tripId) return
+    setConnection(realtime.connection)
+    setGps(realtime.gpsState)
+    setRiders(realtime.roomRiders)
+  }, [tripId, realtime.connection, realtime.gpsState, realtime.roomRiders])
 
   const onlineCount = riders.filter((r) => r.status !== 'offline').length
 
@@ -81,35 +94,6 @@ export default function TripRoom({
     const t = window.setTimeout(() => setLoading(false), 1450)
     return () => window.clearTimeout(t)
   }, [])
-
-  /* ---------- demo: subtle rider presence drift ---------- */
-  useEffect(() => {
-    if (!trip) return
-    const id = window.setInterval(() => {
-      const online = ridersRef.current.filter((r) => r.status === 'online')
-      if (online.length <= 5) return
-      const victim = online[Math.floor(Math.random() * online.length)]
-      ridersRef.current = ridersRef.current.map((r) => (r.id === victim.id ? { ...r, status: 'weak' as const } : r))
-      setRiders(ridersRef.current)
-      window.setTimeout(() => {
-        ridersRef.current = ridersRef.current.map((r) =>
-          r.id === victim.id ? { ...r, status: 'online' as const, speed: 72 } : r,
-        )
-        setRiders(ridersRef.current)
-      }, 7000)
-    }, 26000)
-    return () => window.clearInterval(id)
-  }, [trip])
-
-  /* ---------- demo: one brief reconnection blip ---------- */
-  useEffect(() => {
-    if (!trip) return
-    const t = window.setTimeout(() => {
-      setConnection('reconnecting')
-      window.setTimeout(() => setConnection('connected'), 3500)
-    }, 12000)
-    return () => window.clearTimeout(t)
-  }, [trip])
 
   /* ---------- map & music overlays: lock scroll + escape ---------- */
   useEffect(() => {
@@ -165,7 +149,7 @@ export default function TripRoom({
       />
 
       <ConnectionStatus state={connection} />
-      <GpsStatus state={gps} onEnable={() => setGps('tracking')} />
+      <GpsStatus state={gps} onEnable={() => (tripId ? rideController.startSharingLocation() : setGps('tracking'))} />
 
       <AnimatePresence>
         {mapOpen ? (

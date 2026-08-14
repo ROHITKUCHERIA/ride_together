@@ -7,6 +7,7 @@ interface ConnectionStatusProps {
 }
 
 const STATE_META = {
+  connecting: { dot: 'animate-pulse bg-sunset', text: 'Connecting…', border: 'border-sunset/40 bg-night/60' },
   connected: { dot: 'bg-live', text: 'Live', border: 'border-white/10 bg-night/40' },
   reconnecting: { dot: 'animate-pulse bg-sunset', text: 'Reconnecting…', border: 'border-sunset/40 bg-night/60' },
   offline: { dot: 'animate-pulse bg-road', text: 'Offline', border: 'border-road/40 bg-night/60' },
@@ -28,10 +29,10 @@ export default function ConnectionStatus({ state }: ConnectionStatusProps) {
       >
         <span className="size-2 shrink-0 animate-pulse rounded-full bg-sunset" aria-hidden="true" />
         <p className="text-xs font-medium text-bone">
-          {state === 'offline' ? 'Connection lost' : 'Connection lost'}
+          {state === 'connecting' ? 'Connecting to the ride…' : state === 'offline' ? 'Connection lost' : 'Reconnecting…'}
         </p>
         <span className="ml-auto text-[10px] uppercase tracking-wider text-mist/60">
-          {state === 'offline' ? 'Offline' : 'Reconnecting...'}
+          {state === 'connecting' ? 'Connecting...' : state === 'offline' ? 'Offline' : 'Reconnecting...'}
         </span>
       </motion.div>
     )

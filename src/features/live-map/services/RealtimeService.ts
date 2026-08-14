@@ -7,6 +7,8 @@ export interface RealtimeService {
   onRiderLocations(listener: (riders: RiderLocation[]) => void): () => void
   onConnectionState(listener: (state: RealtimeConnection) => void): () => void
   publishLocation(update: LocationUpdate): void
+  /** Stop sharing the current rider's location (backend marks them offline). */
+  stopSharing(): void
   readonly locationService: LocationService
 }
 

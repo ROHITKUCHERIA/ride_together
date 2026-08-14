@@ -168,7 +168,7 @@ button {
   }
 }
 .rt-route-flow {
-  animation: rt-route-flow 6.6s linear infinite;
+  animation: rt-route-flow 10s linear infinite;
 }
 .rt-route-arrow {
   background: transparent !important;
