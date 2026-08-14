@@ -67,7 +67,6 @@ export function toDemoTrip(trip: Trip, members: TripMember[], currentUserId: str
     inviteUrl: `${window.location.origin}/app?invite=${trip.inviteCode}`,
     riders,
     songs: [],
-    playlists: [],
   }
 }
 

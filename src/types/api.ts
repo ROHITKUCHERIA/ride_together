@@ -99,3 +99,50 @@ export interface TripSongItem {
   addedBy: { id: string; name: string }
   addedAt: string
 }
+
+/** A user playlist (personal or trip-linked). */
+export interface Playlist {
+  id: string
+  name: string
+  description: string | null
+  isPublic: boolean
+  createdAt: string
+  updatedAt: string
+  userId: string
+  tripId: string | null
+  owner: { id: string; name: string; avatarUrl: string | null }
+  trip: { id: string; name: string } | null
+  songCount: number
+}
+
+/** A song inside a playlist detail. */
+export interface PlaylistSongItem {
+  id: string
+  playlistId: string
+  position: number
+  songId: string
+  youtubeVideoId: string
+  title: string
+  channelTitle: string
+  thumbnailUrl: string | null
+  durationSeconds: number | null
+  addedBy: { id: string; name: string }
+  addedAt: string
+}
+
+export interface PlaylistDetail extends Playlist {
+  songs: PlaylistSongItem[]
+}
+
+export interface CreatePlaylistInput {
+  name: string
+  description?: string
+  tripId?: string
+  isPublic?: boolean
+}
+
+export interface UpdatePlaylistInput {
+  name?: string
+  description?: string | null
+  isPublic?: boolean
+}

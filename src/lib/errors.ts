@@ -98,6 +98,17 @@ export function friendlyError(status: number, errorCode: string, _backendMessage
       return "That song couldn't be found on YouTube."
     case 'SONG_ALREADY_ADDED':
       return "This song is already in the trip's music."
+    case 'SONG_ALREADY_IN_PLAYLIST':
+      return 'This song is already in that playlist.'
+    case 'SONG_NOT_IN_PLAYLIST':
+      return 'This song is not in that playlist.'
+    case 'PLAYLIST_NOT_FOUND':
+      return 'That playlist was not found. It may have been removed.'
+    case 'PLAYLIST_PERMISSION_DENIED':
+    case 'PLAYLIST_ACCESS_DENIED':
+      return "You don't have permission to do that."
+    case 'PLAYLIST_REORDER_MISMATCH':
+      return 'The playlist changed before the reorder could be applied.'
     default:
       break
   }

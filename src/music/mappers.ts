@@ -1,8 +1,20 @@
-import type { TripSongItem, YouTubeVideoResult } from '../types/api'
+import type { PlaylistSongItem, TripSongItem, YouTubeVideoResult } from '../types/api'
 import type { PlayerSong } from './playerState'
 
 /** Maps a Trip Music library song into a playable PlayerSong. */
 export function tripSongToPlayerSong(song: TripSongItem): PlayerSong {
+  return {
+    id: song.songId,
+    videoId: song.youtubeVideoId,
+    title: song.title,
+    artist: song.channelTitle,
+    thumbnailUrl: song.thumbnailUrl,
+    duration: song.durationSeconds ?? undefined,
+  }
+}
+
+/** Maps a playlist song entry into a playable PlayerSong. */
+export function playlistSongToPlayerSong(song: PlaylistSongItem): PlayerSong {
   return {
     id: song.songId,
     videoId: song.youtubeVideoId,

@@ -1,4 +1,4 @@
-import type { Playlist, Rider, Song, TripInfo } from '../types'
+import type { Rider, Song, TripInfo } from '../types'
 
 const HYDERABAD: [number, number] = [17.385, 78.4867]
 const GOA: [number, number] = [15.4989, 73.8278]
@@ -245,14 +245,6 @@ const songs: Song[] = [
   },
 ]
 
-const playlists: Playlist[] = [
-  { id: 'pl1', name: "Rohit's Road Trip", emoji: '❤️', owner: 'Rohit', songCount: 24, scope: 'my' },
-  { id: 'pl2', name: 'Highway Vibes', emoji: '🔥', owner: 'Rohit', songCount: 32, scope: 'my' },
-  { id: 'pl3', name: 'Night Ride', emoji: '🌙', owner: 'Rohit', songCount: 18, scope: 'my' },
-  { id: 'pl4', name: 'Goa 2026', emoji: '🏍️', owner: 'Trip', songCount: 56, scope: 'trip' },
-  { id: 'pl5', name: "Everyone's Favorites", emoji: '🔥', owner: 'Trip', songCount: 41, scope: 'trip' },
-]
-
 export const trip: TripInfo = {
   id: 'trip-goa-2026',
   slug: 'goa-2026',
@@ -268,7 +260,6 @@ export const trip: TripInfo = {
   inviteUrl: 'https://ridtogether.app/join/ABC123',
   riders,
   songs,
-  playlists,
 }
 
 export const originCoord: [number, number] = HYDERABAD

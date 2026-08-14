@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Clock, ListMusic, ListPlus, Music2, Pause, Play, Plus, Search, Trash2, User } from 'lucide-react'
+import { Check, Clock, Library, ListMusic, ListPlus, Music2, Pause, Play, Plus, Search, Trash2, User } from 'lucide-react'
 import Drawer from './Drawer'
 import Button from './ui/Button'
 import Spinner from './ui/Spinner'
 import EmptyState from './ui/EmptyState'
 import ErrorState from './ui/ErrorState'
+import AddToPlaylistModal from './playlists/AddToPlaylistModal'
 import { addTripSong, listTripMusic, removeTripSong, searchTripMusic } from '../api/music'
 import { isApiError } from '../lib/errors'
 import { useMusicPlayer } from '../music/context'
@@ -66,6 +67,7 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
   const [adding, setAdding] = useState<string | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [addToPlaylist, setAddToPlaylist] = useState<{ songId: string; title: string } | null>(null)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tripIdRef = useRef(tripId)
@@ -178,7 +180,8 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
   const isManager = role === 'OWNER' || role === 'ADMIN'
 
   return (
-    <Drawer open={open} onClose={onClose} title="Trip Music" eyebrow="Shared library">
+    <>
+      <Drawer open={open} onClose={onClose} title="Trip Music" eyebrow="Shared library">
       {actionError ? (
         <p role="alert" className="mb-4 rounded-xl border border-road/35 bg-road/10 px-3.5 py-2.5 text-sm text-road">
           {actionError}
@@ -372,6 +375,19 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                       <span className="hidden sm:inline">Play</span>
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="!min-h-8 !px-2.5"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setAddToPlaylist({ songId: item.songId, title: item.title })
+                    }}
+                    aria-label={`Add ${item.title} to a playlist`}
+                    title="Add to playlist"
+                  >
+                    <Library size={14} aria-hidden="true" />
+                  </Button>
                   {canRemoveItem ? (
                     <Button
                       size="sm"
@@ -401,5 +417,13 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
         Music, thumbnails and search are provided by YouTube. {isManager ? 'OWNER/ADMIN can remove any song; members can remove their own.' : 'You can remove songs you added; trip owners and admins can remove any.'}
       </p>
     </Drawer>
+    <AddToPlaylistModal
+      open={addToPlaylist !== null}
+      onClose={() => setAddToPlaylist(null)}
+      songId={addToPlaylist?.songId ?? ''}
+      songTitle={addToPlaylist?.title ?? ''}
+      tripId={tripId}
+    />
+    </>
   )
 }

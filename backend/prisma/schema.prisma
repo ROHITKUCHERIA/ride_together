@@ -42,6 +42,8 @@ model User {
   refreshTokens RefreshToken[]
   currentLocations CurrentLocation[]
   addedTripSongs TripSong[] @relation("TripSongAddedBy")
+  playlists   Playlist[] @relation("PlaylistOwner")
+  addedPlaylistSongs PlaylistSong[] @relation("PlaylistSongAddedBy")
 
   @@index([email])
   @@map("users")
@@ -74,6 +76,7 @@ model Trip {
   members     TripMember[]
   currentLocations CurrentLocation[]
   tripSongs   TripSong[]
+  playlists   Playlist[]
 
   @@index([createdBy])
   @@index([status])
@@ -176,6 +179,7 @@ model Song {
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   tripSongs TripSong[]
+  playlistSongs PlaylistSong[]
 
   @@index([title])
   @@map("songs")
@@ -199,4 +203,50 @@ model TripSong {
   @@index([songId])
   @@index([addedByUserId])
   @@map("trip_songs")
+}
+
+/// A user-owned playlist. It can be a PERSONAL playlist (tripId null) or a
+/// TRIP playlist (tripId set, so members can find it inside a trip). Songs
+/// are never duplicated — a PlaylistSong only *references* the shared Song
+/// row; the unique (playlistId, songId) pair is the final protection against
+/// race-condition duplicates.
+model Playlist {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  tripId      String?  @map("trip_id") @db.Uuid
+  name        String
+  description String?
+  isPublic    Boolean  @default(true) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user  User  @relation("PlaylistOwner", fields: [userId], references: [id], onDelete: Cascade)
+  trip  Trip? @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  songs PlaylistSong[]
+
+  @@index([userId])
+  @@index([tripId])
+  @@map("playlists")
+}
+
+/// A song inside a user playlist. `position` is a stable 0-based order kept
+/// unique per playlist (see the reorder flow); deleting a PlaylistSong never
+/// deletes the Song itself.
+model PlaylistSong {
+  id            String   @id @default(uuid()) @db.Uuid
+  playlistId    String   @map("playlist_id") @db.Uuid
+  songId        String   @map("song_id") @db.Uuid
+  position      Int
+  addedByUserId String   @map("added_by_user_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  song     Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  addedBy  User     @relation("PlaylistSongAddedBy", fields: [addedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([playlistId, songId])
+  @@index([playlistId])
+  @@index([songId])
+  @@index([addedByUserId])
+  @@map("playlist_songs")
 }

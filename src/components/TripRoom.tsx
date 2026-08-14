@@ -20,7 +20,7 @@ import { trip as mockTrip } from '../data/mockData'
 import { useMusicPlayer } from '../music/context'
 import { useTripRealtime } from '../features/live-map/hooks/useTripRealtime'
 import { rideController } from '../features/live-map/services/rideController'
-import type { ConnectionState, DrawerKind, GpsState, Playlist, Rider, TripInfo } from '../types'
+import type { ConnectionState, DrawerKind, GpsState, Rider, TripInfo } from '../types'
 import type { MemberRole, Trip, TripMember } from '../types/api'
 import type { TripMapRoute } from '../app/tripInfo'
 
@@ -62,8 +62,6 @@ export default function TripRoom({
   const [tripMusicOpen, setTripMusicOpen] = useState(false)
   const [mapOpen, setMapOpen] = useState(false)
 
-  const [playlists, setPlaylists] = useState<Playlist[]>(thisTrip.playlists)
-
   /* Real backend trip → real Socket.IO + GPS. The realtime service owns the
      socket connection, room membership and GPS watcher; the room just
      subscribes to the same stores the live map uses. */
@@ -76,7 +74,6 @@ export default function TripRoom({
   /* sync presentation data when the source trip changes (e.g. after refresh) */
   useEffect(() => {
     setRiders(thisTrip.riders)
-    setPlaylists(thisTrip.playlists)
   }, [thisTrip])
 
   // Real-mode realtime replaces the simulated room state entirely.
@@ -115,14 +112,6 @@ export default function TripRoom({
   const handleOpenMusic = () => {
     if (music.current) music.openFullPlayer()
     else setTripMusicOpen(true)
-  }
-
-  const addPlaylist = (name: string) => {
-    const id = `pl-${Date.now()}`
-    setPlaylists((prev) => [
-      { id, name, emoji: '🎧', owner: 'You', songCount: 0, scope: 'my' },
-      ...prev,
-    ])
   }
 
   return (
@@ -178,8 +167,8 @@ export default function TripRoom({
       <PlaylistDrawer
         open={drawer === 'playlists'}
         onClose={() => setDrawer(null)}
-        playlists={playlists}
-        onCreate={addPlaylist}
+        tripId={tripId}
+        currentUserId={currentUserId}
       />
       {tripId ? (
         <TripMusicDrawer

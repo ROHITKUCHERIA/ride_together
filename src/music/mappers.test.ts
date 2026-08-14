@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { searchResultToPlayerSong, tripSongToPlayerSong } from './mappers'
-import type { TripSongItem, YouTubeVideoResult } from '../types/api'
+import { playlistSongToPlayerSong, searchResultToPlayerSong, tripSongToPlayerSong } from './mappers'
+import type { PlaylistSongItem, TripSongItem, YouTubeVideoResult } from '../types/api'
 
 const tripSong: TripSongItem = {
   id: 'ts-1',
@@ -54,5 +54,40 @@ describe('searchResultToPlayerSong', () => {
       thumbnailUrl: 'https://img.youtube.com/vi/vid-2/hqdefault.jpg',
       duration: undefined,
     })
+  })
+})
+
+const playlistSong: PlaylistSongItem = {
+  id: 'ps-1',
+  playlistId: 'pl-1',
+  position: 0,
+  songId: 's-1',
+  youtubeVideoId: 'vid-1',
+  title: 'Safarnama',
+  channelTitle: 'Lucky Ali',
+  thumbnailUrl: 'https://img.youtube.com/vi/vid-1/hqdefault.jpg',
+  durationSeconds: 282,
+  addedBy: { id: 'u1', name: 'Rohit' },
+  addedAt: '2026-08-13T12:00:00.000Z',
+}
+
+describe('playlistSongToPlayerSong', () => {
+  it('maps a playlist song entry into a playable song', () => {
+    const song = playlistSongToPlayerSong(playlistSong)
+    expect(song).toEqual({
+      id: 's-1',
+      videoId: 'vid-1',
+      title: 'Safarnama',
+      artist: 'Lucky Ali',
+      thumbnailUrl: 'https://img.youtube.com/vi/vid-1/hqdefault.jpg',
+      duration: 282,
+    })
+  })
+
+  it('carries only safe metadata (no playlist internals)', () => {
+    const song = playlistSongToPlayerSong(playlistSong)
+    expect(song).not.toHaveProperty('position')
+    expect(song).not.toHaveProperty('addedBy')
+    expect(song.videoId).toBe('vid-1')
   })
 })

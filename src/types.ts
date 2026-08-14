@@ -25,17 +25,6 @@ export interface Song {
   url: string
 }
 
-export type PlaylistScope = 'my' | 'trip'
-
-export interface Playlist {
-  id: string
-  name: string
-  emoji: string
-  owner: string
-  songCount: number
-  scope: PlaylistScope
-}
-
 export interface TripInfo {
   id: string
   slug: string
@@ -53,7 +42,6 @@ export interface TripInfo {
   destinationCoords?: [number, number]
   riders: Rider[]
   songs: Song[]
-  playlists: Playlist[]
 }
 
 export type DrawerKind = 'playlists' | 'riders' | 'tripinfo' | null
