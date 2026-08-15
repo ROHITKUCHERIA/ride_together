@@ -65,23 +65,28 @@ export default function Modal({ open, onClose, title, eyebrow, children }: Modal
             exit={isMobile ? { y: '100%' } : { opacity: 0, scale: 0.96 }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           >
-            <header className="flex items-start justify-between gap-4 px-6 pt-6 pb-4">
-              <div>
+            <header className="flex items-start justify-between gap-4 px-6 pt-6 pb-4" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)' }}>
+              <div className="min-w-0">
                 {eyebrow ? (
                   <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-mist/70">{eyebrow}</p>
                 ) : null}
-                <h2 className="font-display text-2xl font-bold tracking-tight text-bone">{title}</h2>
+                <h2 className="rt-wrap font-display text-2xl font-bold tracking-tight text-bone">{title}</h2>
               </div>
               <button
                 ref={closeRef}
                 onClick={onClose}
                 aria-label="Close"
-                className="grid size-9 place-items-center rounded-full border border-white/10 bg-white/5 text-mist transition hover:scale-105 hover:bg-white/10 hover:text-bone focus-visible:outline-2 focus-visible:outline-ember"
+                className="grid size-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-mist transition hover:scale-105 hover:bg-white/10 hover:text-bone focus-visible:outline-2 focus-visible:outline-ember"
               >
                 <X size={16} />
               </button>
             </header>
-            <div className="rt-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-8">{children}</div>
+            <div
+              className="rt-scroll min-h-0 flex-1 overflow-y-auto px-6"
+              style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 2rem)' }}
+            >
+              {children}
+            </div>
           </motion.div>
         </div>
       ) : null}

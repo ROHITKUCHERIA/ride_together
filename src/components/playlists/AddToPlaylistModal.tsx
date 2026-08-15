@@ -202,7 +202,7 @@ export default function AddToPlaylistModal({
                       ) : (
                         <Button
                           size="sm"
-                          variant="ember"
+                          variant="accent"
                           loading={adding === p.id}
                           disabled={adding !== null}
                           onClick={() => void handleAdd(p)}
@@ -235,7 +235,7 @@ export default function AddToPlaylistModal({
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="My Ride Mix"
                 autoFocus
-                className="mt-1.5 w-full rounded-lg border border-white/10 bg-night/60 px-3 py-2 text-sm text-bone outline-none placeholder:text-mist/40 focus:border-ember"
+                className="mt-1.5 w-full rounded-lg border border-white/10 bg-night/60 px-3 py-2 text-sm text-bone outline-none placeholder:text-mist/40 focus:border-accent"
               />
               {tripId ? (
                 <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-mist/80">
@@ -243,7 +243,7 @@ export default function AddToPlaylistModal({
                     type="checkbox"
                     checked={newTrip}
                     onChange={(e) => setNewTrip(e.target.checked)}
-                    className="size-4 accent-ember"
+                    className="size-4 accent-accent"
                   />
                   Link to this trip (Trip playlist)
                 </label>
@@ -253,7 +253,7 @@ export default function AddToPlaylistModal({
                   type="checkbox"
                   checked={newPublic}
                   onChange={(e) => setNewPublic(e.target.checked)}
-                  className="size-4 accent-ember"
+                  className="size-4 accent-accent"
                 />
                 Public
               </label>

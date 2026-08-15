@@ -103,7 +103,7 @@ export default function Register() {
           label="Password"
           type="password"
           autoComplete="new-password"
-          placeholder="At least 8 characters"
+          placeholder="Create a password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={fieldErrors.password}

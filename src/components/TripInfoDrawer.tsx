@@ -1,4 +1,4 @@
-import { Calendar, Flag, MapPin, Route, Settings } from 'lucide-react'
+import { Calendar, Flag, ListPlus, MapPin, Route, Settings } from 'lucide-react'
 import Avatar from './Avatar'
 import Button from './ui/Button'
 import Drawer from './Drawer'
@@ -13,6 +13,8 @@ interface TripInfoDrawerProps {
   role?: MemberRole
   canManage?: boolean
   onManage?: () => void
+  /** Opens the shared playlists panel (surface playlists from the Trip tab). */
+  onOpenPlaylists?: () => void
 }
 
 function roleLabel(role: MemberRole): string {
@@ -21,7 +23,7 @@ function roleLabel(role: MemberRole): string {
   return 'Member'
 }
 
-export default function TripInfoDrawer({ open, onClose, trip, role, canManage, onManage }: TripInfoDrawerProps) {
+export default function TripInfoDrawer({ open, onClose, trip, role, canManage, onManage, onOpenPlaylists }: TripInfoDrawerProps) {
   const creator = trip.riders.find((r) => r.isMe)
 
   return (
@@ -85,6 +87,18 @@ export default function TripInfoDrawer({ open, onClose, trip, role, canManage, o
         </div>
 
         <ShareTrip trip={trip} />
+
+        {onOpenPlaylists ? (
+          <button
+            type="button"
+            onClick={onOpenPlaylists}
+            aria-label="Open trip playlists"
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-bone transition hover:border-ember/45 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-ember"
+          >
+            <ListPlus size={16} className="text-ember" aria-hidden="true" />
+            Trip Playlists
+          </button>
+        ) : null}
 
         {role ? (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">

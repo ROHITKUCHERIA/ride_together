@@ -2,6 +2,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   AlertTriangle,
   AudioLines,
+  ChevronDown,
+  ChevronRight,
   ListMusic,
   MoreVertical,
   Music2,
@@ -15,14 +17,17 @@ import {
   VolumeX,
   X,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import Equalizer from '../components/Equalizer'
 import TripMusicSearch from '../components/TripMusicSearch'
 import { useIsMobile, useMediaQuery } from '../hooks/useMediaQuery'
+import { listTripMusic } from '../api/music'
+import { tripSongToPlayerSong } from './mappers'
 import { useMusicPlayer, type MusicPlayerContextValue } from './context'
 import { formatTime } from './playerState'
 import type { QueueItem } from './playerState'
+import type { TripSongItem } from '../types/api'
 
 interface SeekBarProps {
   value: number
@@ -304,6 +309,31 @@ interface QueuePanelProps {
 
 function QueuePanel({ music, menuKey, onMenuKey, tripId }: QueuePanelProps) {
   const { state } = music
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [library, setLibrary] = useState<TripSongItem[]>([])
+  const [libraryLoading, setLibraryLoading] = useState(false)
+  const [libraryLoaded, setLibraryLoaded] = useState(false)
+
+  const loadLibrary = useCallback(async () => {
+    if (!tripId || libraryLoaded) return
+    setLibraryLoading(true)
+    try {
+      const songs = await listTripMusic(tripId)
+      setLibrary(songs)
+      setLibraryLoaded(true)
+    } catch {
+      // silent — search still works
+    } finally {
+      setLibraryLoading(false)
+    }
+  }, [tripId, libraryLoaded])
+
+  useEffect(() => {
+    if (libraryOpen) void loadLibrary()
+  }, [libraryOpen, loadLibrary])
+
+  const queuedIds = new Set(state.queue.map((item) => item.song.videoId))
+
   return (
     <div className="flex flex-col">
       <div className="sticky top-0 z-[1] border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur">
@@ -347,6 +377,92 @@ function QueuePanel({ music, menuKey, onMenuKey, tripId }: QueuePanelProps) {
           ))
         )}
       </ul>
+
+      {/* Shared Library section */}
+      {tripId ? (
+        <div className="border-t border-zinc-800/80">
+          <button
+            type="button"
+            onClick={() => setLibraryOpen((o) => !o)}
+            className="flex w-full items-center gap-2 px-4 py-3 text-left transition hover:bg-zinc-800/30 focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            {libraryOpen ? <ChevronDown size={13} className="text-zinc-500" /> : <ChevronRight size={13} className="text-zinc-500" />}
+            <ListMusic size={13} className="text-accent" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-400">Shared Library</span>
+            {library.length > 0 ? (
+              <span className="ml-1 font-mono text-[10px] text-zinc-600">· {library.length}</span>
+            ) : null}
+          </button>
+
+          {libraryOpen ? (
+            <div className="max-h-[40vh] overflow-y-auto px-2 pb-2">
+              {libraryLoading ? (
+                <p className="px-3 py-6 text-center font-mono text-[11px] text-zinc-600">loading…</p>
+              ) : library.length === 0 ? (
+                <p className="px-3 py-6 text-center font-mono text-[11px] text-zinc-600">no saved songs</p>
+              ) : (
+                <ul className="space-y-0.5" aria-label="Shared library">
+                  {library.map((item) => {
+                    const isPlaying = music.current?.song.videoId === item.youtubeVideoId
+                    const inQueue = queuedIds.has(item.youtubeVideoId)
+                    const duration = item.durationSeconds != null ? formatTime(item.durationSeconds) : null
+                    return (
+                      <li
+                        key={item.songId}
+                        className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition hover:bg-zinc-800/40"
+                      >
+                        {item.thumbnailUrl ? (
+                          <img
+                            src={item.thumbnailUrl}
+                            alt=""
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            className="size-8 shrink-0 rounded border border-zinc-800 object-cover"
+                          />
+                        ) : (
+                          <span className="grid size-8 shrink-0 place-items-center rounded bg-zinc-800/60 text-zinc-600">
+                            <Music2 size={11} aria-hidden="true" />
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className={`block truncate text-[12px] ${isPlaying ? 'font-medium text-accent' : 'text-zinc-200'}`}>
+                            {item.title}
+                          </span>
+                          <span className="block truncate text-[10px] text-zinc-500">
+                            {item.channelTitle}{duration ? ` · ${duration}` : ''}
+                          </span>
+                        </span>
+                        <span className="flex shrink-0 items-center gap-1">
+                          {isPlaying ? (
+                            <span className="grid size-7 place-items-center rounded bg-accent/15 text-accent">
+                              {music.state.isPlaying ? <Pause size={12} aria-hidden="true" /> : <Play size={12} aria-hidden="true" />}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                music.addToQueue(tripSongToPlayerSong(item))
+                                music.playIndex(music.state.queue.length)
+                              }}
+                              className="grid size-7 place-items-center rounded text-zinc-500 transition hover:bg-zinc-700/40 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-accent opacity-0 group-hover:opacity-100"
+                              aria-label={`Play ${item.title}`}
+                            >
+                              <Play size={12} fill="currentColor" aria-hidden="true" />
+                            </button>
+                          )}
+                          {inQueue ? (
+                            <span className="text-[9px] font-medium uppercase tracking-wider text-zinc-600">queued</span>
+                          ) : null}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

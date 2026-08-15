@@ -203,7 +203,7 @@ export default function PlaylistDrawer({
                     placeholder="My Highway Mix"
                     autoFocus
                     maxLength={80}
-                    className="mt-1.5 w-full rounded-lg border border-white/10 bg-night/60 px-3 py-2 text-sm text-bone outline-none placeholder:text-mist/40 focus:border-ember"
+                    className="mt-1.5 w-full rounded-lg border border-white/10 bg-night/60 px-3 py-2 text-sm text-bone outline-none placeholder:text-mist/40 focus:border-accent"
                   />
                   <label htmlFor="playlist-description" className="mt-3 block text-[11px] font-semibold uppercase tracking-[0.18em] text-mist/70">
                     Description (optional)
@@ -215,7 +215,7 @@ export default function PlaylistDrawer({
                     placeholder="What is this mix for?"
                     rows={2}
                     maxLength={500}
-                    className="mt-1.5 w-full resize-none rounded-lg border border-white/10 bg-night/60 px-3 py-2 text-sm text-bone outline-none placeholder:text-mist/40 focus:border-ember"
+                    className="mt-1.5 w-full resize-none rounded-lg border border-white/10 bg-night/60 px-3 py-2 text-sm text-bone outline-none placeholder:text-mist/40 focus:border-accent"
                   />
                   {tripId ? (
                     <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-mist/80">
@@ -223,7 +223,7 @@ export default function PlaylistDrawer({
                         type="checkbox"
                         checked={linkToTrip}
                         onChange={(e) => setLinkToTrip(e.target.checked)}
-                        className="size-4 accent-ember"
+                        className="size-4 accent-accent"
                       />
                       Link to this trip (Trip playlist)
                     </label>

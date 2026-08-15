@@ -208,7 +208,7 @@ export default function PlaylistDetail({
       ) : null}
 
       {playlist.songs.length > 0 ? (
-        <Button variant="ember" block onClick={handlePlayAll} className="mb-5">
+        <Button variant="accent" block onClick={handlePlayAll} className="mb-5">
           <PlayCircle size={15} aria-hidden="true" /> Play All
         </Button>
       ) : null}
@@ -220,105 +220,133 @@ export default function PlaylistDetail({
           description="Add songs from the Trip Music library to start building this playlist."
         />
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-1.5">
           {playlist.songs.map((item, index) => {
             const duration = formatDuration(item.durationSeconds)
             const isCurrentSong = music.current?.song.videoId === item.youtubeVideoId
             return (
               <li
                 key={item.id}
-                className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5"
+                className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.06]"
               >
-                <span className="w-4 shrink-0 text-center text-[11px] font-semibold text-mist/50">
-                  {index + 1}
-                </span>
-                {item.thumbnailUrl ? (
-                  <img
-                    src={item.thumbnailUrl}
-                    alt=""
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    className="size-10 shrink-0 rounded-lg object-cover ring-1 ring-white/10"
-                  />
-                ) : (
-                  <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-white/5 text-mist/50 ring-1 ring-white/10">
-                    <Music2 size={14} aria-hidden="true" />
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-bone">{item.title}</p>
-                  <p className="flex items-center gap-2 truncate text-[11px] text-mist/70">
+                {/* thumbnail */}
+                <div className="relative size-12 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10">
+                  {item.thumbnailUrl ? (
+                    <img
+                      src={item.thumbnailUrl}
+                      alt=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="grid h-full w-full place-items-center bg-white/5 text-mist/50">
+                      <Music2 size={16} aria-hidden="true" />
+                    </span>
+                  )}
+                  {/* play overlay on hover */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      music.playSongs(playlist.songs.map(playlistSongToPlayerSong), index)
+                      music.openFullPlayer()
+                    }}
+                    className="absolute inset-0 grid place-items-center bg-night/60 opacity-0 transition group-hover:opacity-100"
+                    aria-label={`Play ${item.title}`}
+                  >
+                    {isCurrentSong && music.state.isPlaying ? (
+                      <Pause size={16} className="text-accent" fill="currentColor" aria-hidden="true" />
+                    ) : (
+                      <Play size={16} className="text-accent" fill="currentColor" aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+
+                {/* text */}
+                <div className="min-w-0 flex-1 py-0.5">
+                  <p className={`truncate text-sm font-medium ${isCurrentSong ? 'text-accent' : 'text-bone'}`}>{item.title}</p>
+                  <p className="mt-0.5 flex items-center gap-1.5 truncate text-[11px] text-mist/60">
                     <span className="truncate">{item.channelTitle}</span>
                     {duration ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 text-mist/50">
-                        <Clock size={10} aria-hidden="true" /> {duration}
-                      </span>
+                      <>
+                        <span className="text-mist/30">·</span>
+                        <span className="inline-flex shrink-0 items-center gap-0.5">
+                          <Clock size={9} aria-hidden="true" /> {duration}
+                        </span>
+                      </>
                     ) : null}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant={isCurrentSong ? 'outline' : 'ember'}
-                  onClick={() => {
-                    music.playSongs(
-                      playlist.songs.map(playlistSongToPlayerSong),
-                      index,
-                    )
-                    music.openFullPlayer()
-                  }}
-                  aria-label={`Play ${item.title}`}
-                  title="Play"
-                >
-                  {isCurrentSong && music.state.isPlaying ? (
-                    <Pause size={13} aria-hidden="true" />
-                  ) : (
-                    <Play size={13} aria-hidden="true" />
-                  )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => music.addToQueue(playlistSongToPlayerSong(item))}
-                  aria-label={`Add ${item.title} to the queue`}
-                  title="Add to queue"
-                >
-                  <ListPlus size={13} aria-hidden="true" />
-                </Button>
-                {isOwner ? (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={moving || index === 0}
-                      onClick={() => void handleMove(index, -1)}
-                      aria-label={`Move ${item.title} up`}
-                      title="Move up"
-                    >
-                      <ArrowUp size={13} aria-hidden="true" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={moving || index === playlist.songs.length - 1}
-                      onClick={() => void handleMove(index, 1)}
-                      aria-label={`Move ${item.title} down`}
-                      title="Move down"
-                    >
-                      <ArrowDown size={13} aria-hidden="true" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      loading={removing === item.songId}
-                      disabled={removing !== null}
-                      onClick={() => void handleRemove(item)}
-                      aria-label={`Remove ${item.title}`}
-                      title="Remove"
-                    >
-                      <Trash2 size={13} aria-hidden="true" />
-                    </Button>
-                  </>
-                ) : null}
+
+                {/* actions */}
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant={isCurrentSong ? 'outline' : 'accent'}
+                    className="!min-h-9 !min-w-9 !p-0"
+                    onClick={() => {
+                      music.playSongs(playlist.songs.map(playlistSongToPlayerSong), index)
+                      music.openFullPlayer()
+                    }}
+                    aria-label={`Play ${item.title}`}
+                  >
+                    {isCurrentSong && music.state.isPlaying ? (
+                      <Pause size={14} aria-hidden="true" />
+                    ) : (
+                      <Play size={14} aria-hidden="true" />
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="!min-h-9 !min-w-9 !p-0 sm:!inline-flex !hidden"
+                    onClick={() => music.addToQueue(playlistSongToPlayerSong(item))}
+                    aria-label={`Add ${item.title} to the queue`}
+                    title="Add to queue"
+                  >
+                    <ListPlus size={14} aria-hidden="true" />
+                  </Button>
+                  {isOwner ? (
+                    <>
+                      <span className="hidden items-center gap-0.5 sm:inline-flex">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="!min-h-8 !min-w-8 !p-0"
+                          disabled={moving || index === 0}
+                          onClick={() => void handleMove(index, -1)}
+                          aria-label={`Move ${item.title} up`}
+                          title="Move up"
+                        >
+                          <ArrowUp size={13} aria-hidden="true" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="!min-h-8 !min-w-8 !p-0"
+                          disabled={moving || index === playlist.songs.length - 1}
+                          onClick={() => void handleMove(index, 1)}
+                          aria-label={`Move ${item.title} down`}
+                          title="Move down"
+                        >
+                          <ArrowDown size={13} aria-hidden="true" />
+                        </Button>
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="!min-h-9 !min-w-9 !p-0 text-road/70 hover:text-road"
+                        loading={removing === item.songId}
+                        disabled={removing !== null}
+                        onClick={() => void handleRemove(item)}
+                        aria-label={`Remove ${item.title}`}
+                        title="Remove"
+                      >
+                        <Trash2 size={14} aria-hidden="true" />
+                      </Button>
+                    </>
+                  ) : null}
+                </div>
               </li>
             )
           })}

@@ -24,7 +24,8 @@ export default function ConnectionStatus({ state }: ConnectionStatusProps) {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="fixed inset-x-3 top-14 z-50 flex items-center gap-2 rounded-xl border border-sunset/40 bg-charcoal/90 px-4 py-2.5 backdrop-blur-xl"
+        className="fixed inset-x-3 z-[var(--z-sheet)] flex items-center gap-2 rounded-xl border border-sunset/40 bg-charcoal/90 px-4 py-2.5 backdrop-blur-xl"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 4rem)' }}
         role="status"
       >
         <span className="size-2 shrink-0 animate-pulse rounded-full bg-sunset" aria-hidden="true" />

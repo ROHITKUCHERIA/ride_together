@@ -155,10 +155,11 @@ export default function TripMusicSearch({
   const containerClass =
     variant === 'inline'
       ? 'relative w-full'
-      : 'fixed left-1/2 top-[6.5rem] z-[70] w-[min(26rem,calc(100vw-2rem))] -translate-x-1/2 sm:top-20'
+      : 'fixed left-1/2 z-[70] w-[min(26rem,calc(100vw-2rem))] -translate-x-1/2 sm:top-20'
+  const floatingTop = { top: 'calc(env(safe-area-inset-top, 0px) + 6.25rem)' } as const
 
   return (
-    <div ref={boxRef} className={containerClass}>
+    <div ref={boxRef} className={containerClass} style={variant === 'floating' ? floatingTop : undefined}>
       <div className="relative">
         <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-mist/50" aria-hidden="true" />
         <input

@@ -19,16 +19,16 @@ export default function TripStats({ trip }: TripStatsProps) {
       transition={{ duration: 0.8, delay: 1.0, ease: 'easeOut' }}
       className="flex flex-col items-center gap-4"
     >
-      <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.34em] text-bone/70">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-bone/70 sm:gap-x-4 sm:tracking-[0.34em]">
         <span className="text-mist/80">{trip.origin}</span>
-        <span className="relative flex w-10 items-center" aria-hidden="true">
+        <span className="relative flex w-8 items-center sm:w-12" aria-hidden="true">
           <span className="h-px flex-1 bg-white/25" />
           <span className="text-ember">→</span>
         </span>
         <span className="text-bone">{trip.destination}</span>
       </div>
 
-      <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-mist/75">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-mist/75 sm:tracking-[0.28em]">
         {stats.map((s, i) => (
           <span key={s.label} className="flex items-center gap-3">
             {i > 0 ? <span className="size-0.5 rounded-full bg-white/25" aria-hidden="true" /> : null}

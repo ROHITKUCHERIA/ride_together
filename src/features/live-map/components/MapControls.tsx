@@ -47,10 +47,10 @@ export default function MapControls({
 
   return (
     <div
-      className={`pointer-events-auto absolute z-[5] flex flex-col gap-2.5 ${
+      className={`pointer-events-auto absolute z-[5] flex flex-col gap-3 ${
         isMobile
-          ? 'bottom-[max(env(safe-area-inset-bottom,0px),88px)] right-3'
-          : 'right-5 top-1/2 -translate-y-1/2'
+          ? 'bottom-[max(env(safe-area-inset-bottom,0px),88px)] right-[max(env(safe-area-inset-right,0px),0.75rem)]'
+          : 'right-[max(env(safe-area-inset-right,0px),1.25rem)] top-1/2 -translate-y-1/2'
       }`}
     >
       <Button label="My Location" onClick={onGoToMe} icon={LocateFixed} />

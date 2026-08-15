@@ -29,13 +29,15 @@ export default function TripCard({ trip, isCreator = false }: { trip: Trip; isCr
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-white/8 pt-3.5 text-xs text-mist/70">
-        <span className="inline-flex items-center gap-1.5">
-          <CalendarRange size={13} className="text-sunset" aria-hidden="true" />
-          {formatTripDate(trip.startDate)} – {formatTripDate(trip.endDate)}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-white/8 pt-3.5 text-xs text-mist/70">
+        <span className="inline-flex items-center gap-1.5 [overflow-wrap:anywhere]">
+          <CalendarRange size={13} className="shrink-0 text-sunset" aria-hidden="true" />
+          <span className="min-w-0">
+            {formatTripDate(trip.startDate)} – {formatTripDate(trip.endDate)}
+          </span>
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <Users size={13} className="text-mist/60" aria-hidden="true" />
+          <Users size={13} className="shrink-0 text-mist/60" aria-hidden="true" />
           {trip._count.members} {trip._count.members === 1 ? 'rider' : 'riders'}
         </span>
       </div>

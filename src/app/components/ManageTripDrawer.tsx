@@ -239,7 +239,7 @@ export default function ManageTripDrawer({
               const busyRemove = busy === `remove:${m.id}`
               return (
                 <li key={m.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <Avatar name={m.name} accent={accentFor(m.id)} size={40} />
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-2 font-display text-sm font-medium text-bone">
@@ -250,7 +250,7 @@ export default function ManageTripDrawer({
                       <MemberRoleBadge role={m.role} />
                     </div>
                     {manageable ? (
-                      <div className="flex shrink-0 items-center gap-1.5">
+                      <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                         <select
                           aria-label={`Change ${m.name}'s role`}
                           value={m.role}

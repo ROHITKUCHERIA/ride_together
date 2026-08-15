@@ -84,7 +84,7 @@ export default function Login() {
           label="Password"
           type="password"
           autoComplete="current-password"
-          placeholder="••••••••"
+          placeholder="Enter your password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={fieldErrors.password}

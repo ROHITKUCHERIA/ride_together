@@ -49,6 +49,79 @@ body {
   }
 }
 
+/* Kill any unintended horizontal bleed at the root (iOS viewport-fit edges,
+   stray fixed/absolute children). Prefer width:100% over width:100vw and
+   min-width:0 for flex siblings to keep layout inside the viewport. */
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   Layering system — the single source of truth for z-index. Never use
+   arbitrary values like 9999. The live map feature scopes its own micro-stack
+   inside the z-[70] overlay (leaflet 0 → chrome 5 → cards 6 → nav 7).
+   ========================================================================== */
+:root {
+  --z-nav: 40; /* headers, bottom nav, floating actions */
+  --z-mini: 45; /* persistent mini music player */
+  --z-gps: 55; /* location-unavailable banner */
+  --z-grain: 60; /* film grain (non-interactive) */
+  --z-map: 70; /* full-screen live map overlay */
+  --z-sheet: 80; /* drawers / bottom sheets */
+  --z-modal: 90; /* modals, full-screen music player */
+  --z-loading: 100; /* full-page loaders */
+}
+
+/* Safe-area aware spacing helpers (used where env() cannot ride a Tailwind
+   arbitrary value cleanly). */
+@supports (padding: env(safe-area-inset-top)) {
+  .rt-safe-top { padding-top: env(safe-area-inset-top); }
+  .rt-safe-left { padding-left: env(safe-area-inset-left); }
+  .rt-safe-right { padding-right: env(safe-area-inset-right); }
+  .rt-safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* Guarantee a comfortable (≥44px) touch target for icon-only buttons. */
+.rt-tap {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Allow long content to wrap instead of breaking the layout. */
+.rt-wrap {
+  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+
+/* --------------------------------------------------------------------------
+   Password inputs
+   Custom fonts, letter-spacing, text-shadow and weird line-heights can make
+   iOS Safari render the native mask as rectangles instead of bullets. Keep
+   the native circular masking by locking the font stack & spacing for
+   password fields and explicitly requesting disc bullets on WebKit.
+   -------------------------------------------------------------------------- */
+input[type='password'] {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif !important;
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  -webkit-text-security: disc !important;
+  text-security: disc !important;
+  text-shadow: none !important;
+  text-decoration: none !important;
+}
+
+/* iOS zooms into any focused input whose computed font-size is below 16px.
+   Keep form fields at 16px on phones; desktop keeps its refined sizes. */
+@media (max-width: 640px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 button {
   font-family: inherit;
 }

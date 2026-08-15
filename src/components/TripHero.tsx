@@ -72,7 +72,7 @@ export default function TripHero({ trip }: TripHeroProps) {
       </p>
 
       {/* poster typography */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-4 pt-6 pb-24 sm:pb-36">
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-4 pb-28 pt-8 sm:pb-36">
         <motion.p
           initial={{ opacity: 0, letterSpacing: '0.6em' }}
           animate={{ opacity: 1, letterSpacing: '0.34em' }}
@@ -86,8 +86,8 @@ export default function TripHero({ trip }: TripHeroProps) {
           initial={{ opacity: 0, y: 36 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.75, ease: [0.16, 1, 0.3, 1] }}
-          className="rt-gradient-text text-center font-display font-bold uppercase leading-[0.92] tracking-[-0.02em] select-none"
-          style={{ fontSize: 'clamp(4.25rem, 12vw, 13rem)' }}
+          className="rt-gradient-text rt-wrap max-w-[94vw] text-center font-display font-bold uppercase leading-[0.92] tracking-[-0.02em] select-none"
+          style={{ fontSize: 'clamp(3.5rem, 12vw, 13rem)' }}
         >
           {trip.destination}
         </motion.h1>
@@ -96,8 +96,8 @@ export default function TripHero({ trip }: TripHeroProps) {
           initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.9, delay: 0.95, ease: [0.16, 1, 0.3, 1] }}
-          className="rt-stroke -mt-1 font-display font-bold leading-none tracking-[0.28em] select-none sm:ml-28 sm:-mt-2"
-          style={{ fontSize: 'clamp(1.6rem, 4.2vw, 4.4rem)' }}
+          className="rt-stroke shrink-0 font-display font-bold leading-none tracking-[0.16em] select-none sm:ml-28 sm:-mt-2 sm:tracking-[0.28em]"
+          style={{ fontSize: 'clamp(1.5rem, 4.2vw, 4.4rem)' }}
         >
           ROAD TRIP
         </motion.p>

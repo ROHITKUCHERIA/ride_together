@@ -17,7 +17,8 @@ export default function GpsStatus({ state, onEnable }: GpsStatusProps) {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="fixed left-1/2 top-[10.5rem] z-[55] flex w-max max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-ember/40 bg-charcoal/90 px-4 py-2.5 shadow-lg backdrop-blur-xl"
+        className="fixed left-1/2 z-[var(--z-gps)] flex w-max max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-ember/40 bg-charcoal/90 px-4 py-2.5 shadow-lg backdrop-blur-xl"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 9.5rem)' }}
       >
         <LocateFixed size={15} className="shrink-0 text-ember" aria-hidden="true" />
         <p className="truncate text-xs font-medium text-bone">Location unavailable</p>

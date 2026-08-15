@@ -1,7 +1,7 @@
 import { Loader2 } from 'lucide-react'
 import type { ButtonHTMLAttributes } from 'react'
 
-type Variant = 'primary' | 'ember' | 'outline' | 'ghost' | 'danger'
+type Variant = 'primary' | 'accent' | 'ember' | 'outline' | 'ghost' | 'danger'
 type Size = 'sm' | 'md' | 'lg'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -14,6 +14,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const VARIANT_CLASSES: Record<Variant, string> = {
   primary:
     'bg-bone text-night hover:bg-white focus-visible:outline-ember disabled:hover:bg-bone',
+  accent:
+    'bg-accent text-night hover:brightness-110 focus-visible:outline-accent disabled:hover:bg-accent',
   ember:
     'bg-ember text-night hover:brightness-110 focus-visible:outline-ember disabled:hover:bg-ember',
   outline:
@@ -42,6 +44,7 @@ export default function Button({
   return (
     <button
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={`inline-flex min-h-10 items-center justify-center rounded-xl font-semibold transition active:scale-[0.98] focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${block ? 'w-full' : ''} ${className}`}
       {...rest}
     >

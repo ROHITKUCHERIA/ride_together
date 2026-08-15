@@ -8,6 +8,8 @@ interface RiderMarkerProps {
   rider: RiderLocation
   selected: boolean
   onSelect: (id: string) => void
+  /** Optional visual offset (px) to fan bundled riders apart. */
+  spread?: [number, number]
 }
 
 /**
@@ -15,17 +17,20 @@ interface RiderMarkerProps {
  * teleporting. The Leaflet marker instance is created once and only
  * repositioned — never recreated per update.
  */
-export default function RiderMarker({ rider, selected, onSelect }: RiderMarkerProps) {
+export default function RiderMarker({ rider, selected, onSelect, spread }: RiderMarkerProps) {
   const markerRef = useRef<LeafletMarker | null>(null)
   const target = useRef({ lat: rider.latitude, lng: rider.longitude })
   const current = useRef({ lat: rider.latitude, lng: rider.longitude })
 
   target.current = { lat: rider.latitude, lng: rider.longitude }
 
+  const spreadRef = useRef(spread)
+  spreadRef.current = spread
+
   useEffect(() => {
-    const icon = buildRiderIcon(rider.accent, rider.isMe ?? false, selected, presenceFor(rider.timestamp))
+    const icon = buildRiderIcon(rider.accent, rider.isMe ?? false, selected, presenceFor(rider.timestamp), spreadRef.current)
     if (markerRef.current) markerRef.current.setIcon(icon)
-  }, [rider.accent, rider.isMe, rider.timestamp, selected])
+  }, [rider.accent, rider.isMe, rider.timestamp, selected, spread])
 
   useEffect(() => {
     let raf = 0
@@ -53,7 +58,7 @@ export default function RiderMarker({ rider, selected, onSelect }: RiderMarkerPr
     <Marker
       ref={markerRef}
       position={[rider.latitude, rider.longitude]}
-      icon={buildRiderIcon(rider.accent, rider.isMe ?? false, selected, presenceFor(rider.timestamp))}
+      icon={buildRiderIcon(rider.accent, rider.isMe ?? false, selected, presenceFor(rider.timestamp), spread)}
       zIndexOffset={selected ? 1000 : rider.isMe ? 500 : 0}
       eventHandlers={{ click: () => onSelect(rider.userId) }}
     />

@@ -34,15 +34,16 @@ export default function TripNavigation({ trip, onlineCount, onBack }: TripNaviga
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, delay: 0.5, ease: 'easeOut' }}
-      className="rt-dark-surface pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5"
+      className="rt-dark-surface pointer-events-none absolute inset-x-0 top-0 z-[var(--z-nav)] flex items-center justify-between gap-3 px-4 sm:px-7"
+      style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 1rem)', paddingBottom: '1.25rem' }}
     >
-      <div className="pointer-events-auto flex items-center gap-1.5">
+      <div className="pointer-events-auto flex min-w-0 items-center gap-1.5">
         {onBack ? (
           <button
             type="button"
             onClick={onBack}
             aria-label="Back to trips"
-            className="grid size-9 place-items-center rounded-full border border-white/12 bg-night/50 text-bone/85 backdrop-blur-md transition hover:scale-105 hover:bg-night/75 hover:text-bone focus-visible:outline-2 focus-visible:outline-ember"
+            className="rt-tap grid shrink-0 place-items-center rounded-full border border-white/12 bg-night/50 text-bone/85 backdrop-blur-md transition hover:scale-105 hover:bg-night/75 hover:text-bone focus-visible:outline-2 focus-visible:outline-ember"
           >
             <ArrowLeft size={16} aria-hidden="true" />
           </button>
@@ -56,7 +57,7 @@ export default function TripNavigation({ trip, onlineCount, onBack }: TripNaviga
           <span className="grid size-8 place-items-center rounded-full border border-white/15 bg-night/50 backdrop-blur-md">
             <Bike size={16} className="text-ember" strokeWidth={2} />
           </span>
-          <span className="font-display text-sm font-bold tracking-[0.22em] text-bone">
+          <span className="hidden font-display text-sm font-bold tracking-[0.22em] text-bone sm:inline">
             RIDE<span className="text-ember">TOGETHER</span>
           </span>
         </a>
@@ -66,16 +67,20 @@ export default function TripNavigation({ trip, onlineCount, onBack }: TripNaviga
         {trip.destination} {trip.startDate.slice(-4)}
       </span>
 
-      <div className="pointer-events-auto flex items-center gap-2">
+      <div className="pointer-events-auto flex min-w-0 items-center justify-end gap-2">
         <ThemeToggle compact />
-        <ProviderLink label="Spotify" href="https://open.spotify.com" compact />
-        <ProviderLink label="YouTube Music" href="https://music.youtube.com" compact />
-        <OnlineIndicator count={onlineCount} />
+        <span className="hidden md:block">
+          <ProviderLink label="Spotify" href="https://open.spotify.com" compact />
+        </span>
+        <span className="hidden md:block">
+          <ProviderLink label="YouTube Music" href="https://music.youtube.com" compact />
+        </span>
+        <OnlineIndicator count={onlineCount} compact />
         {me ? (
           <button
             type="button"
             aria-label={`${me.name} — your profile`}
-            className="rounded-full transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-ember"
+            className="shrink-0 rounded-full transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-ember"
           >
             <Avatar name={me.name} accent={me.accent} size={36} status={me.status} />
           </button>

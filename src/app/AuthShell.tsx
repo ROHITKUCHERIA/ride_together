@@ -37,7 +37,7 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
           </Link>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-charcoal/70 p-6 shadow-2xl backdrop-blur-2xl sm:p-8">
+        <div className="rounded-3xl border border-white/10 bg-charcoal/70 p-5 shadow-2xl backdrop-blur-2xl sm:p-8">
           <h1 className="font-display text-2xl font-bold tracking-tight text-bone">{title}</h1>
           <p className="mt-1.5 text-sm text-mist/70">{subtitle}</p>
           <div className="mt-6">{children}</div>

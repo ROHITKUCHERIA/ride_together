@@ -19,7 +19,7 @@ import { calculateDistanceInMeters } from '../utils/geo'
 import { trip as mockTrip } from '../../../data/mockData'
 import { useIsMobile } from '../../../hooks/useMediaQuery'
 import { useTheme } from '../../../theme/ThemeContext'
-import type { TripInfo } from '../../../types'
+import type { Rider, TripInfo } from '../../../types'
 import type { TripMapRoute } from '../../../app/tripInfo'
 import RiderMarker from './RiderMarker'
 import RouteLayer from './RouteLayer'
@@ -34,6 +34,7 @@ import MobileBottomNav from '../../../components/MobileBottomNav'
 interface GroupRideMapProps {
   onClose: () => void
   onExitToMusic: () => void
+  onExitToPlaylists: () => void
   onExitToRiders: () => void
   onExitToTripInfo: () => void
   /** Backend trip id for the realtime connection (pinned in real mode). */
@@ -44,9 +45,12 @@ interface GroupRideMapProps {
   trip?: TripInfo
   /** Start/destination coordinates for the route line (real mode). */
   mapRoute?: TripMapRoute
+  /** Merged member roster (roster + live) driving every count display so the
+      map's online/total numbers match the Riders list and trip info. */
+  roster?: Rider[]
 }
 
-export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, onExitToTripInfo, tripId, useBackend, trip = mockTrip, mapRoute }: GroupRideMapProps) {
+export default function GroupRideMap({ onClose, onExitToMusic, onExitToPlaylists, onExitToRiders, onExitToTripInfo, tripId, useBackend, trip = mockTrip, mapRoute, roster }: GroupRideMapProps) {
   const currentTrip = trip
   const isMobile = useIsMobile()
   const { riders } = useRiders()
@@ -84,6 +88,50 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
   const active = useMemo(() => riders.filter((r) => presenceFor(r.timestamp) !== 'offline'), [riders])
   const counts = useMemo(() => presenceCounts(riders), [riders])
   const following = viewMode === 'follow'
+
+  /* Count displays (badge, group cards) come from the merged roster so the map
+     always agrees with the Riders list and Trip Info. Falls back to the raw
+     realtime snapshot when no roor is supplied (defensive only — the TripRoom
+     always passes it). */
+  const displayCounts = useMemo(() => {
+    if (roster && roster.length > 0) {
+      return {
+        online: roster.filter((r) => r.status !== 'offline').length,
+        weak: roster.filter((r) => r.status === 'weak').length,
+        offline: roster.filter((r) => r.status === 'offline').length,
+        total: roster.length,
+      }
+    }
+    return {
+      online: active.length,
+      weak: counts.delayed + counts.stale,
+      offline: counts.offline,
+      total: riders.length,
+    }
+  }, [roster, active, counts, riders])
+
+  /* Riders sharing a coordinate (~11m grid) get a small visual fan so markers
+     never sit exactly on top of each other. Pure visual nudge — the Leaflet
+     position (and therefore routing, distance, clusters) is untouched. */
+  const markerSpreads = useMemo(() => {
+    const offsets = new Map<string, [number, number]>()
+    const cells = new Map<string, string[]>()
+    riders.forEach((r) => {
+      const key = `${r.latitude.toFixed(4)},${r.longitude.toFixed(4)}`
+      const ids = cells.get(key) ?? []
+      ids.push(r.userId)
+      cells.set(key, ids)
+    })
+    cells.forEach((ids) => {
+      if (ids.length < 2) return
+      const step = (Math.PI * 2) / ids.length
+      ids.forEach((id, i) => {
+        const angle = -Math.PI / 2 + step * i
+        offsets.set(id, [Math.round(Math.cos(angle) * 13), Math.round(Math.sin(angle) * 13)])
+      })
+    })
+    return offsets
+  }, [riders])
 
   const meLat = me?.latitude
   const meLng = me?.longitude
@@ -217,17 +265,19 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
             key={r.userId}
             rider={r}
             selected={selectedId === r.userId}
+            spread={markerSpreads.get(r.userId)}
             onSelect={setSelectedId}
           />
         ))}
       </MapContainer>
 
       {/* top bar */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[5] flex items-center justify-between gap-2 p-3 sm:p-4">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[5] flex items-center justify-between gap-2 px-3 sm:px-4" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)', paddingBottom: '0.75rem' }}>
         <button
           type="button"
           onClick={onClose}
-          className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/12 bg-night/70 px-3.5 py-2 text-xs font-medium text-bone backdrop-blur-xl transition hover:scale-[1.03] hover:bg-night/85 focus-visible:outline-2 focus-visible:outline-ember"
+          aria-label="Close live map"
+          className="rt-tap pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/12 bg-night/70 px-3.5 text-xs font-medium text-bone backdrop-blur-xl transition hover:scale-[1.03] hover:bg-night/85 focus-visible:outline-2 focus-visible:outline-ember"
         >
           <ArrowLeft size={14} aria-hidden="true" />
           <span className="hidden sm:inline">Back to Trip</span>
@@ -240,25 +290,28 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
         </div>
         <span className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-night/70 px-3.5 py-2 text-[11px] font-medium text-bone/85 backdrop-blur-xl">
           <MapPin size={12} className="text-ember" aria-hidden="true" />
-          {active.length}/{riders.length} riding
+          {displayCounts.online}/{displayCounts.total} riding
         </span>
       </div>
 
-      {/* group summary + status — top-left */}
-      <div className="pointer-events-none absolute left-3 top-16 z-[5] flex flex-col gap-2 sm:left-4 sm:top-[72px]">
+      {/* group summary + status — top-left, always below the top bar */}
+      <div
+        className="pointer-events-none absolute z-[5] flex flex-col gap-2 px-3 sm:px-4"
+        style={{ top: 'calc(max(env(safe-area-inset-top, 0px), 0.75rem) + 3.5rem)', left: '0' }}
+      >
         <GroupSummaryCard
           tripName={currentTrip.name}
           origin={currentTrip.origin}
           destination={currentTrip.destination}
           routeKm={currentTrip.distanceKm}
-          live={counts.live}
-          delayed={counts.delayed}
-          offline={counts.offline}
+          live={displayCounts.online}
+          delayed={displayCounts.weak}
+          offline={displayCounts.offline}
         />
         <GroupStatusCard
           health={metrics.health}
-          activeCount={active.length}
-          totalCount={riders.length}
+          activeCount={displayCounts.online}
+          totalCount={displayCounts.total}
           nearestMeters={metrics.nearest?.distanceMeters ?? null}
         />
       </div>
@@ -343,6 +396,7 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
             active="map"
             onOpenMap={() => {}}
             onOpenMusic={onExitToMusic}
+            onOpenPlaylists={onExitToPlaylists}
             onOpenRiders={onExitToRiders}
             onOpenTripInfo={onExitToTripInfo}
           />

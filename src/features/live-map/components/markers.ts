@@ -16,17 +16,32 @@ export function buildRiderIcon(
   isMe: boolean,
   selected: boolean,
   presence: RiderPresence,
+  spread?: [number, number],
 ): L.DivIcon {
-  const size = isMe ? 38 : 32
-  const dot = size * 0.88
+  /* Uniform size for every rider — presence and “me” differ via halo/border,
+     never via physical footprint. */
+  const size = 36
+  const dot = size - 4
+  const iconHeight = Math.round(dot * 0.5)
   const ringColor = selected ? '#ff6b2c' : PRESENCE_RING[presence]
-  const html = `<div class="rt-rider-marker" style="position:relative;width:${size}px;height:${size}px;display:grid;place-items:center;">${
-    isMe
-      ? `<span style="position:absolute;inset:-3px;border-radius:50%;background:rgba(61,220,132,0.28);box-shadow:0 0 0 0 rgba(61,220,132,0.5);animation:rt-pulse 2.2s infinite;"></span>`
-      : presence !== 'live'
-        ? `<span style="position:absolute;inset:0;border-radius:50%;background:${ringColor};opacity:0.25;"></span>`
-        : ''
-  }<div style="width:${dot}px;height:${dot}px;border-radius:50%;display:grid;place-items:center;border:2px solid ${selected ? '#ff6b2c' : 'rgba(255,255,255,0.92)'};background:${accent};box-shadow:0 6px 16px -4px rgba(0,0,0,0.55);transition:transform .2s;">${BIKE_ICON}</div></div>`
+  const borderColor = selected ? '#ff6b2c' : isMe ? 'rgba(61,220,132,0.95)' : 'rgba(255,255,255,0.9)'
+
+  /* Visual-only fan for bundled riders (Leaflet position unchanged). */
+  const translate = spread ? `transform:translate(${spread[0]}px,${spread[1]}px);` : ''
+
+  const halo = isMe
+    ? `<span style="position:absolute;inset:-4px;border-radius:50%;background:rgba(61,220,132,0.25);box-shadow:0 0 0 0 rgba(61,220,132,0.45);animation:rt-pulse 2.2s infinite;"></span>`
+    : presence !== 'live'
+      ? `<span style="position:absolute;inset:4px;border-radius:50%;background:${ringColor};opacity:0.3;"></span>`
+      : ''
+
+  const ring = selected
+    ? `<span style="position:absolute;inset:-6px;border-radius:50%;border:2px solid #ff6b2c;box-shadow:0 0 0 3px rgba(255,107,44,0.22);"></span>`
+    : ''
+
+  const bike = BIKE_ICON.replace('width="15"', `width="${iconHeight}"`).replace('height="15"', `height="${iconHeight}"`)
+
+  const html = `<div class="rt-rider-marker" style="position:relative;width:${size}px;height:${size}px;display:grid;place-items:center;${translate}">${halo}${ring}<div style="width:${dot}px;height:${dot}px;border-radius:50%;display:grid;place-items:center;border:2px solid ${borderColor};background:${accent};box-shadow:0 6px 14px -4px rgba(0,0,0,0.55);transition:transform .2s;">${bike}</div></div>`
   return divIcon({
     className: 'rt-pin-wrap',
     html,

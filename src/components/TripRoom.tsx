@@ -12,7 +12,6 @@ import RidersDrawer from './RidersDrawer'
 import TripHero from './TripHero'
 import TripInfoDrawer from './TripInfoDrawer'
 import TripMusicDrawer from './TripMusicDrawer'
-import TripMusicSearch from './TripMusicSearch'
 import TripNavigation from './TripNavigation'
 import ManageTripDrawer from '../app/components/ManageTripDrawer'
 import { trip as mockTrip } from '../data/mockData'
@@ -108,9 +107,19 @@ export default function TripRoom({
 
   const openDrawer = (kind: Exclude<DrawerKind, null>) => setDrawer((d) => (d === kind ? null : kind))
 
+  /* Music tab always shows the trip music drawer — it hosts Now Playing,
+     search, the trip library and a direct route to playlists, so every
+     music feature stays reachable in ≤2 taps on mobile. The legacy demo
+     route (no tripId) falls back to the full player / playlists. */
   const handleOpenMusic = () => {
-    if (music.current) music.openFullPlayer()
-    else setTripMusicOpen(true)
+    if (tripId) setTripMusicOpen(true)
+    else if (music.current) music.openFullPlayer()
+    else openDrawer('playlists')
+  }
+
+  const handleOpenPlaylists = () => {
+    setTripMusicOpen(false)
+    openDrawer('playlists')
   }
 
   return (
@@ -132,6 +141,7 @@ export default function TripRoom({
         active={mapOpen ? 'map' : undefined}
         onOpenMap={() => setMapOpen(true)}
         onOpenMusic={handleOpenMusic}
+        onOpenPlaylists={handleOpenPlaylists}
         onOpenRiders={() => openDrawer('riders')}
         onOpenTripInfo={() => openDrawer('tripinfo')}
       />
@@ -148,8 +158,10 @@ export default function TripRoom({
               useBackend={Boolean(tripId)}
               trip={thisTrip}
               mapRoute={mapRoute}
+              roster={riders}
               onClose={() => setMapOpen(false)}
               onExitToMusic={handleOpenMusic}
+              onExitToPlaylists={handleOpenPlaylists}
               onExitToRiders={() => {
                 setMapOpen(false)
                 openDrawer('riders')
@@ -169,16 +181,14 @@ export default function TripRoom({
         tripId={tripId}
         currentUserId={currentUserId}
       />
-      {tripId ? (
-        <TripMusicDrawer
+      {tripId ? <TripMusicDrawer
           open={tripMusicOpen}
           onClose={() => setTripMusicOpen(false)}
           tripId={tripId}
           role={role}
           currentUserId={currentUserId}
-        />
-      ) : null}
-      {tripId ? <TripMusicSearch tripId={tripId} /> : null}
+          onOpenPlaylists={handleOpenPlaylists}
+        /> : null}
       <RidersDrawer open={drawer === 'riders'} onClose={() => setDrawer(null)} riders={riders} onlineCount={onlineCount} />
       <TripInfoDrawer
         open={drawer === 'tripinfo'}
@@ -186,6 +196,7 @@ export default function TripRoom({
         trip={thisTrip}
         role={role}
         canManage={role === 'OWNER' || role === 'ADMIN'}
+        onOpenPlaylists={handleOpenPlaylists}
         onManage={() => {
           setDrawer(null)
           setManageOpen(true)

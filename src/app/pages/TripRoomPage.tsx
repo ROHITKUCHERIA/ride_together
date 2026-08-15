@@ -56,6 +56,18 @@ export default function TripRoomPage() {
     }
   }, [tripId])
 
+  /* The backend broadcasts location events but not membership changes. Poll
+     the member roster while the room is open so newly joined riders appear in
+     the Riders list, online counts and trip info without a manual refresh. */
+  const isEnded = trip?.status === 'COMPLETED' || trip?.status === 'CANCELLED'
+  useEffect(() => {
+    if (!tripId || isEnded) return
+    const id = window.setInterval(() => {
+      void refresh()
+    }, 10000)
+    return () => window.clearInterval(id)
+  }, [tripId, isEnded, refresh])
+
   const role = useMemo<MemberRole | undefined>(
     () => (members ?? []).find((m) => m.id === user?.id)?.role,
     [members, user?.id],

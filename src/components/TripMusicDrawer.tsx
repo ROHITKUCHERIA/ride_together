@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Clock, Library, ListMusic, ListPlus, Music2, Pause, Play, Plus, Search, Trash2, User } from 'lucide-react'
+import { AudioLines, Check, Clock, Library, ListMusic, ListPlus, Music2, Pause, Play, Plus, Search, SkipForward, Trash2, User } from 'lucide-react'
 import Drawer from './Drawer'
 import Button from './ui/Button'
 import Spinner from './ui/Spinner'
@@ -20,6 +20,8 @@ interface TripMusicDrawerProps {
   tripId: string
   role?: MemberRole
   currentUserId?: string
+  /** Opens the shared playlists panel (used by mobile to surface playlists from Music). */
+  onOpenPlaylists?: () => void
 }
 
 function formatDuration(seconds: number | null): string | null {
@@ -51,7 +53,7 @@ function ResultThumb({ src }: { src: string | null }) {
  * YouTube Data API (server-side, cached); songs are shared across all members
  * of the trip. Removal follows role permissions (OWNER/ADMIN/own adds).
  */
-export default function TripMusicDrawer({ open, onClose, tripId, role, currentUserId }: TripMusicDrawerProps) {
+export default function TripMusicDrawer({ open, onClose, tripId, role, currentUserId, onOpenPlaylists }: TripMusicDrawerProps) {
   const music = useMusicPlayer()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<YouTubeVideoResult[]>([])
@@ -188,6 +190,71 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
         </p>
       ) : null}
 
+      {/* now playing — quick transport without leaving the drawer */}
+      {music.current ? (
+        <section className="mb-5 rounded-2xl border border-white/10 bg-white/[0.03] p-3" aria-label="Now playing">
+          <div className="flex items-center gap-3">
+            {music.current.song.thumbnailUrl !== null ? (
+              <img
+                src={music.current.song.thumbnailUrl}
+                alt=""
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-white/10"
+              />
+            ) : (
+              <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-white/5 text-mist/50 ring-1 ring-white/10">
+                <Music2 size={16} aria-hidden="true" />
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-accent">Now Playing</p>
+              <p className="truncate font-display text-sm font-semibold text-bone">{music.current.song.title}</p>
+              <p className="truncate text-xs text-mist/70">{music.current.song.artist}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5" role="group" aria-label="Playback controls">
+              <button
+                type="button"
+                onClick={music.togglePlay}
+                aria-label={music.state.isPlaying ? 'Pause' : 'Play'}
+                className="grid size-11 place-items-center rounded-full border border-white/12 bg-white/5 text-bone transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-accent active:scale-95"
+              >
+                {music.state.isPlaying ? <Pause size={16} fill="currentColor" aria-hidden="true" /> : <Play size={16} fill="currentColor" aria-hidden="true" />}
+              </button>
+              <button
+                type="button"
+                onClick={music.next}
+                aria-label="Next song"
+                className="grid size-11 place-items-center rounded-full border border-white/12 bg-white/5 text-bone transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-accent active:scale-95"
+              >
+                <SkipForward size={16} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => music.openFullPlayer()}
+            className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/5 text-xs font-semibold text-bone transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            <AudioLines size={14} className="text-accent" aria-hidden="true" />
+            Open full player
+          </button>
+        </section>
+      ) : null}
+
+      {/* playlist access — shared playlists in ≤2 taps from Music */}
+      {onOpenPlaylists ? (
+        <button
+          type="button"
+          onClick={onOpenPlaylists}
+          aria-label="Open trip playlists"
+          className="mb-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-bone transition hover:border-accent/45 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          <ListPlus size={16} className="text-accent" aria-hidden="true" />
+          Trip Playlists
+        </button>
+      ) : null}
+
       {/* search */}
       <form onSubmit={handleSearchSubmit} className="mb-6" role="search">
         <div className="relative">
@@ -200,7 +267,7 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
             aria-label="Search YouTube songs"
             autoComplete="off"
             spellCheck={false}
-            className="min-h-11 w-full rounded-xl border border-white/12 bg-night/60 pl-10 pr-10 text-sm text-bone outline-none transition placeholder:text-mist/40 focus:border-ember"
+            className="min-h-11 w-full rounded-xl border border-white/12 bg-night/60 pl-10 pr-10 text-sm text-bone outline-none transition placeholder:text-mist/40 focus:border-accent"
           />
           {searched ? (
             <Button type="button" variant="ghost" size="sm" onClick={clearSearch} className="absolute right-1.5 top-1/2 -translate-y-1/2 !min-h-8 !px-2.5">
@@ -265,7 +332,7 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                   </Button>
                   <Button
                     size="sm"
-                    variant={isAdded ? 'outline' : 'ember'}
+                    variant={isAdded ? 'outline' : 'accent'}
                     disabled={isAdded || adding === r.videoId}
                     loading={adding === r.videoId}
                     onClick={(e) => {
@@ -350,7 +417,7 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                   {isCurrentSong ? (
                     <Button
                       size="sm"
-                      variant={music.state.isPlaying ? 'outline' : 'ember'}
+                      variant={music.state.isPlaying ? 'outline' : 'accent'}
                       loading={!!music.state.loading && music.state.isPlaying}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -364,7 +431,7 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                   ) : (
                     <Button
                       size="sm"
-                      variant="ember"
+                      variant="accent"
                       onClick={(e) => {
                         e.stopPropagation()
                         handlePlaySong(item)
