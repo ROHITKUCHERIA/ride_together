@@ -39,7 +39,7 @@ export default function ConnectionStatus({ state }: ConnectionStatusProps) {
   }
 
   return (
-    <div className="pointer-events-none fixed bottom-5 right-5 z-40">
+    <div className="pointer-events-none fixed right-5 top-24 z-40">
       <div className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-2 backdrop-blur-md ${meta.border}`} role="status">
         <span className={`size-1.5 rounded-full ${meta.dot}`} aria-hidden="true" />
         <span className="text-[11px] font-medium tracking-wide text-bone/75">{meta.text}</span>

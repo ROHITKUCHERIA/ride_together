@@ -19,7 +19,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import Equalizer from '../components/Equalizer'
 import TripMusicSearch from '../components/TripMusicSearch'
-import { useIsMobile } from '../hooks/useMediaQuery'
+import { useIsMobile, useMediaQuery } from '../hooks/useMediaQuery'
 import { useMusicPlayer, type MusicPlayerContextValue } from './context'
 import { formatTime } from './playerState'
 import type { QueueItem } from './playerState'
@@ -157,7 +157,7 @@ function MainPlayer({ music }: { music: MusicPlayerContextValue }) {
   const thumbnailUrl = current.song.thumbnailUrl
 
   return (
-    <div className="relative flex min-h-full flex-col items-center justify-center px-5 py-8 sm:px-8 lg:py-10">
+    <div className="relative flex min-h-full flex-col items-center justify-center px-5 py-4 sm:px-8 lg:py-10">
       {thumbnailUrl ? (
         <img
           src={thumbnailUrl}
@@ -169,7 +169,7 @@ function MainPlayer({ music }: { music: MusicPlayerContextValue }) {
 
       <div className="relative flex w-full max-w-xl flex-col items-center">
         {/* artwork */}
-        <div className="h-44 w-44 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-[0_16px_56px_-20px_rgba(0,0,0,0.9)] sm:h-56 sm:w-56 lg:h-64 lg:w-64">
+        <div className="relative h-36 w-36 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-[0_16px_56px_-20px_rgba(0,0,0,0.9)] sm:h-56 sm:w-56 lg:h-64 lg:w-64">
           {thumbnailUrl !== null ? (
             <img src={thumbnailUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
           ) : (
@@ -177,12 +177,17 @@ function MainPlayer({ music }: { music: MusicPlayerContextValue }) {
               <Music2 size={40} aria-hidden="true" />
             </span>
           )}
+          {state.loading ? (
+            <div aria-live="polite" className="absolute inset-0 grid place-items-center rounded-xl bg-zinc-950/55 backdrop-blur-sm">
+              <p className="animate-pulse font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-300">loading…</p>
+            </div>
+          ) : null}
         </div>
 
         {/* song info */}
-        <div className="mt-7 text-center">
+        <div className="mt-4 text-center sm:mt-7">
           <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">&gt; Now Playing</p>
-          <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight text-zinc-100 sm:text-3xl">
+          <h2 className="mt-2 font-display text-xl font-semibold tracking-tight text-zinc-100 sm:text-3xl">
             {current.song.title}
           </h2>
           <p className="mt-1 text-sm text-zinc-400">{current.song.artist}</p>
@@ -192,13 +197,13 @@ function MainPlayer({ music }: { music: MusicPlayerContextValue }) {
         </div>
 
         {/* waveform */}
-        <div className="mt-6 opacity-70">
+        <div className="mt-3 opacity-70 sm:mt-6">
           <Equalizer playing={state.isPlaying} bars={36} className="h-6 items-center gap-[3px]" barClassName="bg-accent/60" />
         </div>
 
         {/* status rows: error / prompt / loading */}
         {state.error ? (
-          <div className="mt-6 flex w-full max-w-md items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3.5 py-2.5" role="alert">
+          <div className="mt-3 flex w-full max-w-md items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3.5 py-2.5 sm:mt-6" role="alert">
             <AlertTriangle size={14} className="shrink-0 text-red-400" aria-hidden="true" />
             <p className="min-w-0 flex-1 text-left font-mono text-[11px] text-red-200">{state.error}</p>
             <button
@@ -216,19 +221,15 @@ function MainPlayer({ music }: { music: MusicPlayerContextValue }) {
           <button
             type="button"
             onClick={music.resumePlay}
-            className="mt-6 flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-3.5 py-2 font-mono text-[11px] uppercase tracking-wider text-accent transition hover:bg-accent/15 focus-visible:outline-2 focus-visible:outline-accent"
+            className="mt-3 flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-3.5 py-2 font-mono text-[11px] uppercase tracking-wider text-accent transition hover:bg-accent/15 focus-visible:outline-2 focus-visible:outline-accent sm:mt-6"
           >
             <Play size={12} fill="currentColor" aria-hidden="true" />
-            Tap play
+            Tap Play to start music
           </button>
         ) : null}
 
-        {state.loading ? (
-          <p className="mt-5 animate-pulse font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">loading…</p>
-        ) : null}
-
         {/* progress */}
-        <div className="mt-5 w-full max-w-md">
+        <div className="mt-4 w-full max-w-md sm:mt-5">
           <SeekBar value={state.currentTime} max={state.duration || 1} ariaLabel="Seek" onChange={music.seek} />
           <div className="mt-1.5 flex items-center justify-between font-mono text-[10px] text-zinc-500">
             <span>{formatTime(state.currentTime)}</span>
@@ -271,7 +272,7 @@ function MainPlayer({ music }: { music: MusicPlayerContextValue }) {
         </div>
 
         {/* volume */}
-        <div className="mt-6 flex w-full max-w-xs items-center gap-3">
+        <div className="mt-4 flex w-full max-w-xs items-center gap-3 sm:mt-6">
           <button
             type="button"
             onClick={music.toggleMute}
@@ -457,8 +458,10 @@ export default function FullPlayer() {
   const music = useMusicPlayer()
   const { state, current } = music
   const isMobile = useIsMobile()
+  const belowMd = useMediaQuery('(max-width: 767px)')
   const location = useLocation()
   const [menuKey, setMenuKey] = useState<string | null>(null)
+  const [mobileView, setMobileView] = useState<'now' | 'queue'>('now')
   const queueRef = useRef<HTMLElement | null>(null)
 
   const tripMatch = /^\/app\/trips\/([^/]+)/.exec(location.pathname)
@@ -484,6 +487,11 @@ export default function FullPlayer() {
     if (!open) setMenuKey(null)
   }, [open])
 
+  // Re-open the full player on the "Now Playing" view.
+  useEffect(() => {
+    setMobileView('now')
+  }, [open])
+
   const goToQueue = () => {
     queueRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }
@@ -507,10 +515,34 @@ export default function FullPlayer() {
           aria-label="Music player"
         >
           {/* header */}
-          <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-800/80 px-4 sm:px-6">
-            <div className="flex items-center gap-2.5">
-              <AudioLines size={15} className="text-accent" aria-hidden="true" />
-              <span className="font-mono text-[11px] uppercase tracking-[0.32em] text-zinc-400">TripRoom / Music</span>
+          <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-zinc-800/80 px-4 sm:px-6">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <AudioLines size={15} className="shrink-0 text-accent" aria-hidden="true" />
+              <span className="hidden font-mono text-[11px] uppercase tracking-[0.32em] text-zinc-400 sm:inline">TripRoom / Music</span>
+              {belowMd ? (
+                <div role="tablist" aria-label="Player view" className="flex flex-shrink-0 items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900 p-0.5">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={mobileView === 'now'}
+                    onClick={() => setMobileView('now')}
+                    className="rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    <span className={mobileView === 'now' ? 'text-accent' : 'text-zinc-500 hover:text-zinc-200'}>Now Playing</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={mobileView === 'queue'}
+                    onClick={() => setMobileView('queue')}
+                    className="rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wider transition focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    <span className={mobileView === 'queue' ? 'text-accent' : 'text-zinc-500 hover:text-zinc-200'}>
+                      Up Next{state.queue.length > 0 ? ` · ${state.queue.length}` : ''}
+                    </span>
+                  </button>
+                </div>
+              ) : null}
             </div>
             <div className="flex items-center gap-4">
               <span className="hidden items-center gap-2 sm:flex">
@@ -532,21 +564,27 @@ export default function FullPlayer() {
 
           {/* content */}
           <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_320px] lg:grid-cols-[220px_minmax(0,1fr)_340px]">
-            <aside className="hidden min-h-0 flex-col overflow-y-auto border-r border-zinc-800/80 lg:flex">
+            <aside className="rt-scroll-none hidden min-h-0 flex-col overflow-y-auto border-r border-zinc-800/80 lg:flex">
               <LeftRail music={music} onGoQueue={goToQueue} />
             </aside>
 
-            <main className="relative min-h-0 overflow-y-auto">
-              <MainPlayer music={music} />
-              {/* queue on mobile/tablet single column */}
-              <div className="border-t border-zinc-800/80 md:hidden">
-                <QueuePanel music={music} menuKey={menuKey} onMenuKey={setMenuKey} tripId={tripId} />
-              </div>
+            <main className="rt-scroll-none relative min-h-0 overflow-hidden md:overflow-y-auto">
+              {belowMd ? (
+                mobileView === 'queue' ? (
+                  <div className="h-full overflow-y-auto">
+                    <QueuePanel music={music} menuKey={menuKey} onMenuKey={setMenuKey} tripId={tripId} />
+                  </div>
+                ) : (
+                  <MainPlayer music={music} />
+                )
+              ) : (
+                <MainPlayer music={music} />
+              )}
             </main>
 
             <aside
               ref={queueRef}
-              className="hidden min-h-0 flex-col overflow-y-auto border-l border-zinc-800/80 md:flex"
+              className="rt-scroll-none hidden min-h-0 flex-col overflow-y-auto border-l border-zinc-800/80 md:flex"
             >
               <QueuePanel music={music} menuKey={menuKey} onMenuKey={setMenuKey} tripId={tripId} />
             </aside>

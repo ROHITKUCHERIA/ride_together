@@ -15,11 +15,15 @@ interface ModalProps {
 export default function Modal({ open, onClose, title, eyebrow, children }: ModalProps) {
   const isMobile = useIsMobile()
   const closeRef = useRef<HTMLButtonElement>(null)
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
 
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
     window.addEventListener('keydown', onKey)
     const t = window.setTimeout(() => closeRef.current?.focus(), 120)
@@ -27,7 +31,7 @@ export default function Modal({ open, onClose, title, eyebrow, children }: Modal
       window.removeEventListener('keydown', onKey)
       window.clearTimeout(t)
     }
-  }, [open, onClose])
+  }, [open])
 
   useEffect(() => {
     if (!open) return

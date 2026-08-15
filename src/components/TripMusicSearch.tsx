@@ -155,7 +155,7 @@ export default function TripMusicSearch({
   const containerClass =
     variant === 'inline'
       ? 'relative w-full'
-      : 'fixed left-1/2 top-[4.75rem] z-[70] w-[min(26rem,calc(100vw-2rem))] -translate-x-1/2 sm:top-20'
+      : 'fixed left-1/2 top-[6.5rem] z-[70] w-[min(26rem,calc(100vw-2rem))] -translate-x-1/2 sm:top-20'
 
   return (
     <div ref={boxRef} className={containerClass}>

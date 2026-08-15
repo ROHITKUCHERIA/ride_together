@@ -87,7 +87,7 @@ export default function ShareTrip({ trip }: ShareTripProps) {
             height={360}
             loading="lazy"
             onError={() => setQrFailed(true)}
-            className="mx-auto block w-full max-w-[220px] bg-white p-2"
+            className="mx-auto block w-full max-w-[220px] bg-[#ffffff] p-2"
           />
         )}
       </div>

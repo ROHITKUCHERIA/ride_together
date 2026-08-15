@@ -2,6 +2,7 @@ import { Bike } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import Avatar from '../components/Avatar'
+import ThemeToggle from '../components/ThemeToggle'
 
 interface AppHeaderProps {
   actions?: React.ReactNode
@@ -24,6 +25,7 @@ export default function AppHeader({ actions }: AppHeaderProps) {
         </Link>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle compact />
           {actions}
           <Link
             to="/app/profile"

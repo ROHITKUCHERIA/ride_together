@@ -47,6 +47,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const seekHandledRef = useRef(state.seekNonce)
   const replayHandledRef = useRef(state.replayNonce)
   const retryHandledRef = useRef(state.retryNonce)
+  /** While a seek is landing, the poll must not snap the bar back to the
+   *  player's pre-seek position. Active until the player reaches the target. */
+  const pendingSeekRef = useRef<{ active: boolean; target: number }>({ active: false, target: 0 })
 
   const stateRef = useRef(state)
   stateRef.current = state
@@ -107,6 +110,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       if (!player) return
       loadedVideoIdRef.current = videoId
       loadInFlightRef.current = true
+      pendingSeekRef.current = { active: false, target: 0 }
       dispatch({ type: 'SET_LOADING', loading: true })
       dispatch({ type: 'SET_ERROR', error: null })
       dispatch({ type: 'SET_AUTOPLAY_BLOCKED', blocked: false })
@@ -282,6 +286,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     if (currentVideoId !== loadedVideoIdRef.current) return
     const player = playerRef.current
     if (!player) return
+    pendingSeekRef.current = { active: true, target: 0 }
     player.seekTo(0, true)
     if (state.isPlaying) attemptPlay()
   }, [state.ready, currentVideoId, state.replayNonce, state.isPlaying, attemptPlay])
@@ -291,6 +296,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     if (!state.ready || !currentVideoId) return
     if (state.seekNonce === seekHandledRef.current) return
     seekHandledRef.current = state.seekNonce
+    pendingSeekRef.current = { active: true, target: state.currentTime }
     playerRef.current?.seekTo(state.currentTime, true)
   }, [state.ready, currentVideoId, state.seekNonce, state.currentTime])
 
@@ -309,7 +315,14 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     progressTimerRef.current = window.setInterval(() => {
       const player = playerRef.current
       if (!player) return
-      dispatch({ type: 'SET_TIME', seconds: player.getCurrentTime() })
+      const current = player.getCurrentTime()
+      const pending = pendingSeekRef.current
+      // While a seek is landing, keep showing the requested position instead of
+      // snapping back to the player's pre-seek time (which lags by one poll).
+      if (!pending.active || current >= pending.target - 0.5) {
+        pendingSeekRef.current = { active: false, target: 0 }
+        dispatch({ type: 'SET_TIME', seconds: current })
+      }
       const duration = player.getDuration()
       if (duration > 0) dispatch({ type: 'SET_DURATION', seconds: duration })
     }, PROGRESS_INTERVAL_MS)

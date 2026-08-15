@@ -71,6 +71,15 @@ button {
   border-radius: 999px;
 }
 
+/* Scrollable without a visible scrollbar (music player panels). */
+.rt-scroll-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.rt-scroll-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* ---------- film grain ---------- */
 .rt-grain {
   position: fixed;
@@ -196,4 +205,93 @@ button {
   background: rgba(16, 16, 19, 0.85) !important;
   color: #f4efe7 !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* ==========================================================================
+   Day / Light mode
+   Toggled by the ThemeProvider as `rt-theme-day` on <html>. Tailwind v4
+   utilities resolve these variables at their point of use, so re-declaring
+   the palette here restyles every token-driven surface automatically.
+   ========================================================================== */
+
+.rt-theme-day {
+  color-scheme: light;
+
+  /* semantic surfaces & text */
+  --color-night: #f3f1ea;
+  --color-charcoal: #ffffff;
+  --color-ash: #ebe7de;
+  --color-bone: #1a1916;
+  --color-mist: #6f6a61;
+
+  /* accents/status — pushed darker for AA contrast on light ground */
+  --color-ember: #e5550f;
+  --color-sunset: #c4650e;
+  --color-road: #c91120;
+  --color-live: #0e7a44;
+  --color-dusk: #ece8f6;
+  --color-accent: #0d7a46;
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 20%, transparent);
+
+  /* treat "white" overlays as dark-on-light so border-white/10, bg-white/5,
+     ring-white/10 etc. render as subtle light-modes cards/borders */
+  --color-white: #191817;
+
+  /* flip the zinc scale: dark surfaces -> light, muted text -> dark text */
+  --color-zinc-950: #ffffff;
+  --color-zinc-900: #f7f5f0;
+  --color-zinc-800: #ece8e1;
+  --color-zinc-700: #dfdbd2;
+  --color-zinc-600: #b3aea4;
+  --color-zinc-500: #908b82;
+  --color-zinc-400: #6f6a61;
+  --color-zinc-300: #4c4943;
+  --color-zinc-200: #36342f;
+  --color-zinc-100: #242320;
+  --color-zinc-50: #121110;
+}
+
+.rt-theme-day .rt-scroll::-webkit-scrollbar-thumb {
+  background: rgba(26, 25, 22, 0.2);
+}
+
+/* Light map chrome for day mode (tiles are themed separately via the Light
+   provider; these fix Leaflet's controls/base while Light tiles load). */
+.rt-theme-day .leaflet-container {
+  background: #e9e6df !important;
+}
+.rt-theme-day .leaflet-control-zoom {
+  border-color: rgba(26, 25, 22, 0.18) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+}
+.rt-theme-day .leaflet-control-zoom a {
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #1a1916 !important;
+  border-color: rgba(26, 25, 22, 0.12) !important;
+}
+.rt-theme-day .leaflet-control-zoom a:hover {
+  background: #ffffff !important;
+}
+.rt-theme-day .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: rgba(26, 25, 22, 0.55) !important;
+}
+.rt-theme-day .leaflet-control-attribution a {
+  color: rgba(26, 25, 22, 0.55) !important;
+}
+
+/* Components that must keep their cinematic dark look even in day mode
+   (trip hero, trip navigation over the photo) force the dark tokens
+   back — utility classes on descendants re-resolve these variables. */
+.rt-theme-day .rt-dark-surface {
+  color-scheme: dark;
+  --color-night: #0a0a0c;
+  --color-charcoal: #16161a;
+  --color-ash: #232327;
+  --color-bone: #f4efe7;
+  --color-mist: #b8b4ac;
+  --color-dusk: #1b1730;
+  --color-white: #ffffff;
+  --color-accent: color-mix(in oklab, #3ddc84 100%, #3ddc84);
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 22%, transparent);
 }

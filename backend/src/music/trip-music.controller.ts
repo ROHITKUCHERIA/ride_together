@@ -25,7 +25,7 @@ export class TripMusicController {
   constructor(private readonly music: TripMusicService) {}
 
   @Get(':tripId/music/search')
-  @Throttle({ music: { limit: 30, ttl: 60_000 } })
+  @Throttle({ music: { limit: 90, ttl: 60_000 } })
   @ApiOperation({ summary: 'Search YouTube for songs (members only)' })
   search(
     @Param('tripId', new ParseUUIDPipe()) tripId: string,

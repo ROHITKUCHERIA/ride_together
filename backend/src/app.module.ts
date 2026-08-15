@@ -23,9 +23,14 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     AppConfigModule,
     PrismaModule,
     ThrottlerModule.forRoot([
+      // 'default' is the only throttle applied to every request.
       { name: 'default', ttl: 60_000, limit: 120 },
-      { name: 'auth', ttl: 60_000, limit: 10 },
-      { name: 'music', ttl: 60_000, limit: 30 },
+      // 'auth' and 'music' are scoped per-route via @Throttle decorators
+      // (AuthController, TripMusicController). They are registered here so the
+      // named throttlers exist for those decorators, but left effectively open
+      // globally — otherwise they would silently cap every unrelated route.
+      { name: 'auth', ttl: 60_000, limit: 1_000_000 },
+      { name: 'music', ttl: 60_000, limit: 1_000_000 },
     ]),
     AuthModule,
     UsersModule,

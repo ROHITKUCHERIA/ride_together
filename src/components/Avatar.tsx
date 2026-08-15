@@ -24,7 +24,7 @@ export default function Avatar({ name, accent, size = 40, status, className }: A
 
   return (
     <span
-      className={`relative inline-flex shrink-0 items-center justify-center rounded-full font-display font-semibold text-bone ${className ?? ''}`}
+      className={`relative inline-flex shrink-0 items-center justify-center rounded-full font-display font-semibold text-[#ffffff] ${className ?? ''}`}
       style={{
         width: size,
         height: size,

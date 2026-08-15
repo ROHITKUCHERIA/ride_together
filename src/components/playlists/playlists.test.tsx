@@ -169,7 +169,7 @@ describe('PlaylistDrawer', () => {
   })
 
   it('shows an error state and retries', async () => {
-    api.listMyPlaylists.mockRejectedValue(new Error('Network down'))
+    api.listMyPlaylists.mockRejectedValue(new ApiError(0, 'NETWORK', 'Network down'))
     render(<PlaylistDrawer open onClose={() => {}} tripId="trip-1" currentUserId="u1" />)
 
     expect(await screen.findByText('Network down')).toBeInTheDocument()
@@ -263,9 +263,7 @@ describe('PlaylistDetail', () => {
   })
 
   it('handles a deleted playlist (404)', async () => {
-    api.getPlaylist.mockRejectedValue(
-      Object.assign(new Error('not found'), { status: 404, errorCode: 'PLAYLIST_NOT_FOUND' }),
-    )
+    api.getPlaylist.mockRejectedValue(new ApiError(404, 'PLAYLIST_NOT_FOUND', 'not found'))
     render(<PlaylistDetail playlistId="pl-missing" currentUserId="u1" onBack={() => {}} onDeleted={() => {}} />)
 
     expect(await screen.findByText('This playlist no longer exists.')).toBeInTheDocument()
@@ -322,7 +320,7 @@ describe('AddToPlaylistModal', () => {
       songCount: 0,
     }))
     api.addSongToPlaylist.mockRejectedValue(
-      Object.assign(new Error('dup'), { status: 409, errorCode: 'SONG_ALREADY_IN_PLAYLIST' }),
+      new ApiError(409, 'SONG_ALREADY_IN_PLAYLIST', 'dup'),
     )
 
     render(

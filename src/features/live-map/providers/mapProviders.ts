@@ -20,6 +20,13 @@ export const DEFAULT_TILE_PROVIDERS: MapProvider[] = [
     maxZoom: 19,
   },
   {
+    id: 'light',
+    label: 'Light',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    maxZoom: 19,
+  },
+  {
     id: 'standard',
     label: 'Standard',
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',

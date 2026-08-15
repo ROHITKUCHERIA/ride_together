@@ -18,6 +18,7 @@ import {
 import { calculateDistanceInMeters } from '../utils/geo'
 import { trip as mockTrip } from '../../../data/mockData'
 import { useIsMobile } from '../../../hooks/useMediaQuery'
+import { useTheme } from '../../../theme/ThemeContext'
 import type { TripInfo } from '../../../types'
 import type { TripMapRoute } from '../../../app/tripInfo'
 import RiderMarker from './RiderMarker'
@@ -54,9 +55,25 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
   const metrics = useGroupMetrics()
 
   const providers = useMemo(() => resolveTileProviders(), [])
-  const [providerId, setProviderId] = useState(providers[0]?.id ?? 'dark')
+  const { theme } = useTheme()
+  const themeProviderId = useMemo(
+    () =>
+      providers.find((p) => p.id === (theme === 'day' ? 'light' : 'dark'))?.id ??
+      providers[0]?.id ??
+      'dark',
+    [providers, theme],
+  )
+  const [providerId, setProviderId] = useState(themeProviderId)
+  const [userCycledProvider, setUserCycledProvider] = useState(false)
   const [viewMode, setViewMode] = useState<MapViewMode>('group')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  // Auto-follow the app theme (day = light tiles, night = dark tiles) until the
+  // rider manually cycles providers for this session.
+  useEffect(() => {
+    if (userCycledProvider) return
+    setProviderId(themeProviderId)
+  }, [themeProviderId, userCycledProvider])
 
   const mapElRef = useRef<LeafletMap | null>(null)
   const meRef = useRef<{ lat: number; lng: number } | null>(null)
@@ -154,6 +171,7 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
   }, [])
 
   const cycleProvider = useCallback(() => {
+    setUserCycledProvider(true)
     setProviderId((prev) => {
       const i = providers.findIndex((p) => p.id === prev)
       return providers[(i + 1) % providers.length]?.id ?? prev
@@ -276,7 +294,7 @@ export default function GroupRideMap({ onClose, onExitToMusic, onExitToRiders, o
 
       {/* desktop: bottom-left trip info */}
       {!isMobile && (
-        <div className="pointer-events-auto absolute bottom-5 left-4 z-[5] w-[min(30vw,300px)] rounded-2xl border border-white/12 bg-[rgba(18,18,21,0.85)] p-3.5 backdrop-blur-2xl">
+        <div className="pointer-events-auto absolute bottom-5 left-4 z-[5] w-[min(30vw,300px)] rounded-2xl border border-white/12 bg-night/85 p-3.5 backdrop-blur-2xl">
           <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-mist/50">{currentTrip.name}</p>
           <p className="mt-1 font-display text-base font-bold text-bone">
             {currentTrip.origin} → {currentTrip.destination}

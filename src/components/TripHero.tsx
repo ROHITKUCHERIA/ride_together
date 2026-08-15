@@ -18,7 +18,7 @@ const PARTICLES = [
 
 export default function TripHero({ trip }: TripHeroProps) {
   return (
-    <section className="absolute inset-0 overflow-hidden" aria-label={`${trip.name}`}>
+    <section className="rt-dark-surface absolute inset-0 overflow-hidden" aria-label={`${trip.name}`}>
       {/* background */}
       <picture>
         <source media="(min-width: 640px)" srcSet="/images/hero-1920.jpg" />

@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { rideController } from '../services/rideController'
+import { hasGeolocationPermission } from '../services/LocationService'
 import { useConnection, useGps, useRiders } from './useLiveMap'
 import type { TripStatus } from '../../../types/api'
 import type { GpsState, Rider } from '../../../types'
@@ -41,14 +42,30 @@ export function useTripRealtime({ tripId, status, roster }: UseTripRealtimeOptio
     if (ended) rideController.pauseLocationSharing()
   }, [ended])
 
+  // If the browser already holds geolocation permission for this site, begin
+  // sharing right away — entering a trip with location already enabled must
+  // not show the "Location unavailable" prompt. Auto-start only happens on a
+  // confirmed "granted" state; pending/denied still surface the Enable prompt.
+  useEffect(() => {
+    if (!tripId || ended) return
+    let cancelled = false
+    void hasGeolocationPermission().then((granted) => {
+      if (granted && !cancelled) rideController.startSharingLocation()
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [tripId, ended])
+
   const connection = useConnection()
   const gps = useGps()
   const { riders } = useRiders()
 
-  // Room-level GPS banner state: only a confirmed active fix counts as
-  // "tracking". Anything else (inactive / paused / denied / error / starting)
-  // surfaces the room's "Enable Location" prompt.
-  const gpsState: GpsState = gps.mode === 'active' ? 'tracking' : 'unavailable'
+// Room-level GPS banner state: a working fix (or one being acquired) counts
+// as "tracking". Anything else (inactive / paused / denied / error) surfaces
+// the room's location prompt — 'starting' is transient and needs no prompt.
+const gpsState: GpsState =
+  gps.mode === 'active' || gps.mode === 'starting' ? 'tracking' : 'unavailable'
 
   // Realtime riders projected onto the room-level Rider shape. `me` is used
   // for distance-from-user on the riders list. When a roster is supplied the

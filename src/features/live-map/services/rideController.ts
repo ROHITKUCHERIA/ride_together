@@ -43,6 +43,10 @@ class RideController {
 
   startSharingLocation(): void {
     if (!this.realtime) return
+    // Already watching (either a confirmed fix or a pending first fix) — do not
+    // create a second watch or steal `stopLocation`.
+    const mode = gpsStore.getState().mode
+    if (mode === 'active' || mode === 'starting') return
     gpsStore.setMode('starting')
     this.stopLocation = this.realtime.locationService.start({
       onUpdate: (update) => {

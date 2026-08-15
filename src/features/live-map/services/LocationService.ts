@@ -27,6 +27,22 @@ export interface LocationService {
 }
 
 /**
+ * Resolves true only when this site already holds granted geolocation
+ * permission. When the browser can't answer (unsupported API, Safari quirks,
+ * or a pending/denied state) it returns false so the room never auto-starts
+ * sharing without explicit consent.
+ */
+export async function hasGeolocationPermission(): Promise<boolean> {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.permissions?.query) return false
+    const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
+    return result.state === 'granted'
+  } catch {
+    return false
+  }
+}
+
+/**
  * Browser-geolocation based service. Client-side throttling is only for UX —
  * the future backend enforces its own limits. Frontend never trusts the
  * userId/tripId embedded in a payload.

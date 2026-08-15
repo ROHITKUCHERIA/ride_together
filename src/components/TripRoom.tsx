@@ -7,7 +7,6 @@ import FloatingActions from './FloatingActions'
 import GpsStatus from './GpsStatus'
 import LoadingScreen from './LoadingScreen'
 import MobileBottomNav from './MobileBottomNav'
-import OnlineIndicator from './OnlineIndicator'
 import PlaylistDrawer from './PlaylistDrawer'
 import RidersDrawer from './RidersDrawer'
 import TripHero from './TripHero'
@@ -205,11 +204,6 @@ export default function TripRoom({
           onDeleted={onDeleted ?? onBack ?? (() => {})}
         />
       ) : null}
-
-      {/* mobile / tablet keeps a compact online chip in the nav's empty center slot */}
-      <div className="rt-online-chip pointer-events-none fixed left-1/2 top-3 z-40 -translate-x-1/2 lg:hidden">
-        <OnlineIndicator count={onlineCount} className="bg-night/45" />
-      </div>
 
       <FilmGrain />
       <CursorSpotlight />

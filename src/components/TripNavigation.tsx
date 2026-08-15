@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Bike, ExternalLink, Music2 } from 'lucide-react'
 import Avatar from './Avatar'
 import OnlineIndicator from './OnlineIndicator'
+import ThemeToggle from './ThemeToggle'
 import type { TripInfo } from '../types'
 
 interface TripNavigationProps {
@@ -33,7 +34,7 @@ export default function TripNavigation({ trip, onlineCount, onBack }: TripNaviga
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, delay: 0.5, ease: 'easeOut' }}
-      className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5"
+      className="rt-dark-surface pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-5"
     >
       <div className="pointer-events-auto flex items-center gap-1.5">
         {onBack ? (
@@ -66,9 +67,10 @@ export default function TripNavigation({ trip, onlineCount, onBack }: TripNaviga
       </span>
 
       <div className="pointer-events-auto flex items-center gap-2">
+        <ThemeToggle compact />
         <ProviderLink label="Spotify" href="https://open.spotify.com" compact />
         <ProviderLink label="YouTube Music" href="https://music.youtube.com" compact />
-        <OnlineIndicator count={onlineCount} className="hidden lg:inline-flex" />
+        <OnlineIndicator count={onlineCount} />
         {me ? (
           <button
             type="button"
