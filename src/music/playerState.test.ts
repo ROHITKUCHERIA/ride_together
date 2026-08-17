@@ -203,3 +203,111 @@ describe('formatTime', () => {
     expect(formatTime(-4)).toBe('0:00')
   })
 })
+
+describe('Jam sync reducer', () => {
+  it('JAM_SYNC loads the authoritative song and enters Jam mode', () => {
+    const state = musicReducer(initialMusicState(), {
+      type: 'JAM_SYNC',
+      song: b,
+      position: 84,
+      isPlaying: true,
+    })
+    expect(currentSong(state)?.id).toBe('b')
+    expect(state.jamMode).toBe(true)
+    expect(state.isPlaying).toBe(true)
+    expect(state.currentTime).toBe(84)
+    expect(state.duration).toBe(210)
+    expect(state.loading).toBe(true)
+    expect(state.error).toBeNull()
+  })
+
+  it('JAM_SYNC on the same song re-applies position (drift correction)', () => {
+    const first = musicReducer(initialMusicState(), {
+      type: 'JAM_SYNC',
+      song: b,
+      position: 10,
+      isPlaying: true,
+    })
+    const synced = musicReducer(first, {
+      type: 'JAM_SYNC',
+      song: b,
+      position: 45,
+      isPlaying: true,
+    })
+    expect(synced.queue).toHaveLength(1)
+    expect(synced.currentTime).toBe(45)
+    expect(synced.jamSyncNonce).toBe(first.jamSyncNonce + 1)
+    expect(synced.jamMode).toBe(true)
+  })
+
+  it('JAM_END leaves Jam mode and stops playback', () => {
+    const inJam = musicReducer(initialMusicState(), {
+      type: 'JAM_SYNC',
+      song: b,
+      position: 30,
+      isPlaying: true,
+    })
+    const ended = musicReducer(inJam, { type: 'JAM_END' })
+    expect(ended.jamMode).toBe(false)
+    expect(ended.isPlaying).toBe(false)
+    expect(currentSong(ended)).not.toBeNull()
+  })
+
+  it('local transport actions are ignored while Jam mode is on', () => {
+    const inJam = musicReducer(initialMusicState(), {
+      type: 'JAM_SYNC',
+      song: b,
+      position: 30,
+      isPlaying: true,
+    })
+    const toggled = musicReducer(inJam, { type: 'TOGGLE_PLAY' })
+    expect(toggled.isPlaying).toBe(true)
+    expect(toggled.jamSyncNonce).toBe(inJam.jamSyncNonce)
+
+    const played = musicReducer(inJam, { type: 'PLAY_SONGS', items: [a], startIndex: 0 })
+    expect(currentSong(played)?.id).toBe('b')
+
+    const seeked = musicReducer(inJam, { type: 'SEEK', seconds: 99 })
+    expect(seeked.currentTime).toBe(30)
+  })
+
+  it('SONG_ENDED does not auto-advance while Jam mode is on', () => {
+    const inJam = musicReducer(initialMusicState(), {
+      type: 'JAM_SYNC',
+      song: a,
+      position: 190,
+      isPlaying: true,
+    })
+    const ended = musicReducer(inJam, { type: 'SONG_ENDED' })
+    expect(currentSong(ended)?.id).toBe('a')
+    expect(ended.isPlaying).toBe(false)
+  })
+
+  it('RESUME_PLAY still works while Jam mode is on (tap-to-sync)', () => {
+    const inJam = musicReducer(initialMusicState(), {
+      type: 'JAM_SYNC',
+      song: b,
+      position: 30,
+      isPlaying: true,
+    })
+    const blocked = musicReducer(inJam, { type: 'SET_AUTOPLAY_BLOCKED', blocked: true })
+    const resumed = musicReducer(blocked, { type: 'RESUME_PLAY' })
+    expect(resumed.needsPlayPrompt).toBe(false)
+    expect(resumed.isPlaying).toBe(true)
+  })
+
+  it('RESTORE_LAST_PLAY brings back the pre-Jam song paused at its position', () => {
+    const inJam = musicReducer(initialMusicState(), {
+      type: 'JAM_SYNC',
+      song: b,
+      position: 84,
+      isPlaying: true,
+    })
+    const restored = musicReducer(inJam, { type: 'RESTORE_LAST_PLAY', song: a, position: 120 })
+    expect(currentSong(restored)?.id).toBe('a')
+    expect(restored.currentTime).toBe(120)
+    expect(restored.jamMode).toBe(false)
+    expect(restored.isPlaying).toBe(false)
+    expect(restored.loading).toBe(true)
+  })
+})

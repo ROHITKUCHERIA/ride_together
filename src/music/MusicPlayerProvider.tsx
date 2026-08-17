@@ -47,6 +47,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const seekHandledRef = useRef(state.seekNonce)
   const replayHandledRef = useRef(state.replayNonce)
   const retryHandledRef = useRef(state.retryNonce)
+  const jamSyncHandledRef = useRef(state.jamSyncNonce)
+  /** While a last-playing-song restore is landing, apply the seek+play once the
+   *  video is actually loaded (mirrors the Jam sync readiness handling). */
+  const restorePendingRef = useRef<{ position: number; isPlaying: boolean } | null>(null)
   /** While a seek is landing, the poll must not snap the bar back to the
    *  player's pre-seek position. Active until the player reaches the target. */
   const pendingSeekRef = useRef<{ active: boolean; target: number }>({ active: false, target: 0 })
@@ -114,6 +118,11 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_LOADING', loading: true })
       dispatch({ type: 'SET_ERROR', error: null })
       dispatch({ type: 'SET_AUTOPLAY_BLOCKED', blocked: false })
+      // Capture the DESIRED playback state at request time: state-driven loads
+      // (a paused Jam, a restored last-playing song, a reconnect resync) must
+      // NOT autoplay audio the user never asked for. User-initiated plays set
+      // isPlaying = true, so their intent is still honoured.
+      const shouldAutoplay = stateRef.current.isPlaying
       try {
         // Wait for the video to actually load before requesting playback —
         // calling playVideo() while loadVideoById() is still pending is
@@ -126,8 +135,16 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         return
       }
       loadInFlightRef.current = false
-      attemptPlay()
-      scheduleAutoplayCheck()
+      if (shouldAutoplay) {
+        attemptPlay()
+        scheduleAutoplayCheck()
+      } else {
+        // The video is cued but intentionally paused — clear the loading state
+        // (a PLAYING event won't arrive to do it) so the UI is not stuck on
+        // "Syncing…". The Jam/restore effects apply the authoritative seek
+        // once the video is ready.
+        dispatch({ type: 'SET_LOADING', loading: false })
+      }
     },
     [attemptPlay, scheduleAutoplayCheck],
   )
@@ -265,7 +282,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     const player = playerRef.current
     if (!player) return
     if (state.isPlaying) {
-      if (!loadInFlightRef.current) {
+      // While a "tap to sync" prompt is showing, do not re-request playback —
+      // it would just be blocked again. The prompt's button calls resumePlay()
+      // inside the user gesture, which clears it and lets this effect play.
+      if (!state.needsPlayPrompt && !loadInFlightRef.current) {
         attemptPlay()
         scheduleAutoplayCheck()
       }
@@ -273,7 +293,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       player.pauseVideo()
       clearAutoplayTimer()
     }
-  }, [state.ready, currentVideoId, state.isPlaying, attemptPlay, scheduleAutoplayCheck, clearAutoplayTimer])
+  }, [state.ready, currentVideoId, state.isPlaying, state.needsPlayPrompt, attemptPlay, scheduleAutoplayCheck, clearAutoplayTimer])
 
   // Replay the same video (prev/next wrap on a single-song queue).
   useEffect(() => {
@@ -299,6 +319,56 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     pendingSeekRef.current = { active: true, target: state.currentTime }
     playerRef.current?.seekTo(state.currentTime, true)
   }, [state.ready, currentVideoId, state.seekNonce, state.currentTime])
+
+  // Authoritative Jam syncs: seek to the server position and apply play/pause
+  // once the requested video is actually loaded. The provider ignores user
+  // seeks while jamMode is on, so this is the only thing moving playback while
+  // the Jam is active. The seek is deferred until loadInFlight clears so a
+  // mid-load seek (song change) is never swallowed by the player.
+  useEffect(() => {
+    if (!state.ready || !currentVideoId || !state.jamMode) return
+    if (state.jamSyncNonce === jamSyncHandledRef.current) return
+    const player = playerRef.current
+    if (!player) return
+    if (loadInFlightRef.current) return
+    if (currentVideoId !== loadedVideoIdRef.current) return
+    jamSyncHandledRef.current = state.jamSyncNonce
+    pendingSeekRef.current = { active: true, target: state.currentTime }
+    player.seekTo(state.currentTime, true)
+    // When the browser blocked autoplay ("Tap to sync" is showing) the position
+    // is corrected quietly but playback is NOT retried — retrying against a
+    // blocked browser is what caused the play/stop loop on page refresh. The
+    // user's tap (resumePlay) starts playback inside the gesture.
+    if (state.isPlaying && !state.needsPlayPrompt) {
+      attemptPlay()
+      scheduleAutoplayCheck()
+    } else {
+      player.pauseVideo()
+      clearAutoplayTimer()
+    }
+  }, [state.ready, currentVideoId, state.jamMode, state.jamSyncNonce, state.currentTime, state.isPlaying, state.needsPlayPrompt, state.loading, attemptPlay, scheduleAutoplayCheck, clearAutoplayTimer])
+
+  // Restore the pre-Jam "last playing" song after leaving a Jam: wait for the
+  // requested video to finish loading, then seek to the saved position and hold
+  // paused so the user sees exactly where they left off.
+  useEffect(() => {
+    if (!state.ready || !currentVideoId) return
+    if (!restorePendingRef.current) return
+    const player = playerRef.current
+    if (!player) return
+    if (loadInFlightRef.current) return
+    if (currentVideoId !== loadedVideoIdRef.current) return
+    const pending = restorePendingRef.current
+    restorePendingRef.current = null
+    pendingSeekRef.current = { active: true, target: pending.position }
+    player.pauseVideo()
+    clearAutoplayTimer()
+    player.seekTo(pending.position, true)
+    if (pending.isPlaying) {
+      attemptPlay()
+      scheduleAutoplayCheck()
+    }
+  }, [state.ready, currentVideoId, state.loading, attemptPlay, scheduleAutoplayCheck, clearAutoplayTimer])
 
   // Volume / mute.
   useEffect(() => {
@@ -360,30 +430,37 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, [authStatus])
 
   const playSongs = useCallback((items: PlayerSong[], startIndex = 0) => {
+    if (stateRef.current.jamMode) return
     dispatch({ type: 'PLAY_SONGS', items, startIndex })
   }, [])
 
   const play = useCallback((song: PlayerSong) => {
+    if (stateRef.current.jamMode) return
     dispatch({ type: 'PLAY_SONGS', items: [song], startIndex: 0 })
   }, [])
 
   const playIndex = useCallback((index: number) => {
+    if (stateRef.current.jamMode) return
     dispatch({ type: 'PLAY_AT', index })
   }, [])
 
   const togglePlay = useCallback(() => {
+    if (stateRef.current.jamMode) return
     dispatch({ type: 'TOGGLE_PLAY' })
   }, [])
 
   const next = useCallback(() => {
+    if (stateRef.current.jamMode) return
     dispatch({ type: 'NEXT' })
   }, [])
 
   const prev = useCallback(() => {
+    if (stateRef.current.jamMode) return
     dispatch({ type: 'PREV' })
   }, [])
 
   const seek = useCallback((seconds: number) => {
+    if (stateRef.current.jamMode) return
     dispatch({ type: 'SEEK', seconds })
   }, [])
 
@@ -396,27 +473,36 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addToQueue = useCallback((song: PlayerSong) => {
+    if (stateRef.current.jamMode) return
     dispatch({ type: 'ADD_TO_QUEUE', song })
   }, [])
 
   const playSongNext = useCallback((song: PlayerSong) => {
+    if (stateRef.current.jamMode) return
     dispatch({ type: 'INSERT_NEXT', song })
   }, [])
 
   const removeFromQueue = useCallback((key: string) => {
+    if (stateRef.current.jamMode) return
     dispatch({ type: 'REMOVE_FROM_QUEUE', key })
   }, [])
 
   const clearQueue = useCallback(() => {
+    if (stateRef.current.jamMode) return
     dispatch({ type: 'CLEAR_QUEUE' })
   }, [])
 
   const retryCurrent = useCallback(() => {
+    if (stateRef.current.jamMode) return
     dispatch({ type: 'RETRY_CURRENT' })
   }, [])
 
   const resumePlay = useCallback(() => {
     dispatch({ type: 'RESUME_PLAY' })
+  }, [])
+
+  const pause = useCallback(() => {
+    dispatch({ type: 'SET_PLAYING', playing: false })
   }, [])
 
   const openFullPlayer = useCallback(() => {
@@ -425,6 +511,28 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   const closeFullPlayer = useCallback(() => {
     dispatch({ type: 'CLOSE_FULL' })
+  }, [])
+
+  const setJamMode = useCallback((mode: boolean) => {
+    dispatch({ type: 'SET_JAM_MODE', mode })
+  }, [])
+
+  const jamSync = useCallback((song: PlayerSong, position: number, isPlaying: boolean) => {
+    dispatch({ type: 'JAM_SYNC', song, position, isPlaying })
+  }, [])
+
+  const jamEnd = useCallback(() => {
+    dispatch({ type: 'JAM_END' })
+  }, [])
+
+  const restoreLastPlay = useCallback((song: PlayerSong, position: number) => {
+    dispatch({ type: 'RESTORE_LAST_PLAY', song, position })
+    // The provider seeks once the restored video is actually loaded.
+    restorePendingRef.current = { position, isPlaying: false }
+  }, [])
+
+  const getPlayerPosition = useCallback(() => {
+    return playerRef.current?.getCurrentTime() ?? 0
   }, [])
 
   const value = useMemo<MusicPlayerContextValue>(
@@ -446,8 +554,14 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       clearQueue,
       retryCurrent,
       resumePlay,
+      pause,
       openFullPlayer,
       closeFullPlayer,
+setJamMode,
+      jamSync,
+      jamEnd,
+      restoreLastPlay,
+      getPlayerPosition,
     }),
     [
       state,
@@ -466,8 +580,14 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       clearQueue,
       retryCurrent,
       resumePlay,
+      pause,
       openFullPlayer,
       closeFullPlayer,
+      setJamMode,
+      jamSync,
+      jamEnd,
+      restoreLastPlay,
+      getPlayerPosition,
     ],
   )
 

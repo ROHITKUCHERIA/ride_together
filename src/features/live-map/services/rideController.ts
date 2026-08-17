@@ -87,6 +87,13 @@ class RideController {
     gpsStore.setMode('paused')
   }
 
+  /** Exposes the Socket.IO transport when the room runs on the real backend,
+   *  so other features (e.g. the Jam) subscribe/emit on the SAME socket instead
+   *  of opening a second connection. Mock mode returns null (no Jam). */
+  getSocketRealtime(): SocketRealtimeService | null {
+    return this.realtime instanceof SocketRealtimeService ? this.realtime : null
+  }
+
   dispose(): void {
     this.pauseLocationSharing()
     this.realtime?.disconnect()

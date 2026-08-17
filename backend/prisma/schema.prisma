@@ -44,6 +44,8 @@ model User {
   addedTripSongs TripSong[] @relation("TripSongAddedBy")
   playlists   Playlist[] @relation("PlaylistOwner")
   addedPlaylistSongs PlaylistSong[] @relation("PlaylistSongAddedBy")
+  hostedJams JamSession[] @relation("JamHosts")
+  jamParticipants JamParticipant[] @relation("JamParticipantUsers")
 
   @@index([email])
   @@map("users")
@@ -77,6 +79,7 @@ model Trip {
   currentLocations CurrentLocation[]
   tripSongs   TripSong[]
   playlists   Playlist[]
+  jams        JamSession[]  @relation("JamTrips")
 
   @@index([createdBy])
   @@index([status])
@@ -180,6 +183,7 @@ model Song {
 
   tripSongs TripSong[]
   playlistSongs PlaylistSong[]
+  jams      JamSession[] @relation("JamSongs")
 
   @@index([title])
   @@map("songs")
@@ -249,4 +253,66 @@ model PlaylistSong {
   @@index([songId])
   @@index([addedByUserId])
   @@map("playlist_songs")
+}
+
+/// Lifecycle of a realtime music Jam session. Only ACTIVE jams are joinable;
+/// a deleted/ended jam must never be returned as an active session.
+enum JamStatus {
+  ACTIVE
+  ENDED
+  DELETED
+}
+
+/// A server-authoritative realtime music session for a trip. The Host is the
+/// only member allowed to control playback; every participant follows the
+/// state published here. Playback position is captured relative to
+/// `positionAt` (server clock) so clients can compute the current position
+/// without flooding the network with per-frame updates.
+model JamSession {
+  id            String    @id @default(uuid()) @db.Uuid
+  tripId        String    @map("trip_id") @db.Uuid
+  hostUserId    String    @map("host_user_id") @db.Uuid
+  currentSongId String?   @map("current_song_id") @db.Uuid
+  status        JamStatus @default(ACTIVE)
+  isPlaying     Boolean   @default(false) @map("is_playing")
+  /// Position (seconds) captured at `positionAt`. The authoritative position
+  /// while playing is derived as `position + (serverNow - positionAt) / 1000`.
+  position      Float     @default(0) @map("position") @db.DoublePrecision
+  positionAt    DateTime  @default(now()) @map("position_at") @db.Timestamptz(6)
+  /// Monotonic counter bumped on every authoritative state transition. Clients
+  /// drop stale `jam:state` broadcasts with an older version.
+  stateVersion  Int       @default(0) @map("state_version")
+  /// Host presence heartbeat. Online when `now - hostLastSeenAt` is small.
+  hostLastSeenAt DateTime @default(now()) @map("host_last_seen_at") @db.Timestamptz(6)
+  startedAt     DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  endedAt       DateTime? @map("ended_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trip         Trip            @relation("JamTrips", fields: [tripId], references: [id], onDelete: Cascade)
+  host         User            @relation("JamHosts", fields: [hostUserId], references: [id], onDelete: Cascade)
+  currentSong  Song?           @relation("JamSongs", fields: [currentSongId], references: [id], onDelete: SetNull)
+  participants JamParticipant[]
+
+  @@index([tripId, status])
+  @@index([hostUserId])
+  @@map("jam_sessions")
+}
+
+/// Membership of a user in a jam session. The host is added on creation and
+/// removed when the jam is deleted; participants are re-added on join.
+model JamParticipant {
+  id           String   @id @default(uuid()) @db.Uuid
+  jamSessionId String   @map("jam_session_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  joinedAt     DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+  lastSeenAt   DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+
+  jamSession JamSession @relation(fields: [jamSessionId], references: [id], onDelete: Cascade)
+  user       User       @relation("JamParticipantUsers", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([jamSessionId, userId])
+  @@index([jamSessionId])
+  @@index([userId])
+  @@map("jam_participants")
 }

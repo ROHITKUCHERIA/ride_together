@@ -6,10 +6,12 @@ import Spinner from './ui/Spinner'
 import EmptyState from './ui/EmptyState'
 import ErrorState from './ui/ErrorState'
 import AddToPlaylistModal from './playlists/AddToPlaylistModal'
+import TripJamPanel from './TripJamPanel'
 import { addTripSong, listTripMusic, removeTripSong, searchTripMusic } from '../api/music'
 import { isApiError } from '../lib/errors'
 import { useMusicPlayer } from '../music/context'
 import { searchResultToPlayerSong, tripSongToPlayerSong } from '../music/mappers'
+import type { TripJamApi } from '../jam/useTripJam'
 import type { MemberRole, TripSongItem, YouTubeVideoResult } from '../types/api'
 
 const SEARCH_DEBOUNCE_MS = 400
@@ -22,6 +24,8 @@ interface TripMusicDrawerProps {
   currentUserId?: string
   /** Opens the shared playlists panel (used by mobile to surface playlists from Music). */
   onOpenPlaylists?: () => void
+  /** Real-time Jam session for the trip (Host controls, participants follow). */
+  jam?: TripJamApi
 }
 
 function formatDuration(seconds: number | null): string | null {
@@ -53,8 +57,14 @@ function ResultThumb({ src }: { src: string | null }) {
  * YouTube Data API (server-side, cached); songs are shared across all members
  * of the trip. Removal follows role permissions (OWNER/ADMIN/own adds).
  */
-export default function TripMusicDrawer({ open, onClose, tripId, role, currentUserId, onOpenPlaylists }: TripMusicDrawerProps) {
+export default function TripMusicDrawer({ open, onClose, tripId, role, currentUserId, onOpenPlaylists, jam }: TripMusicDrawerProps) {
   const music = useMusicPlayer()
+  const jamActive = jam?.ui.phase === 'active'
+  const jamHost = jam?.isHost === true
+  const jamParticipant = jam?.isParticipant === true
+  /** In the Jam: Host controls it; participants follow it; everyone else
+   *  (like a member who has not joined) keeps normal local playback. */
+  const jamLocksPlayback = jamActive && (jamHost || jamParticipant)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<YouTubeVideoResult[]>([])
   const [nextPageToken, setNextPageToken] = useState<string | null>(null)
@@ -173,6 +183,17 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
   const librarySongs = useMemo(() => library.map(tripSongToPlayerSong), [library])
 
   const handlePlaySong = (song: TripSongItem) => {
+    // In an active Jam, only the Host drives playback for everyone. Members who
+    // have NOT joined (like a visitor just browsing) keep normal local play.
+    if (jam?.ui.jam && jam.isHost) {
+      // Tapping the song already playing in the Jam toggles play/pause.
+      if (jam.ui.jam.currentSong?.songId === song.songId) {
+        void jam.control(jam.ui.jam.isPlaying ? 'pause' : 'play')
+      } else {
+        void jam.control('song_changed', { songId: song.songId })
+      }
+      return
+    }
     const index = library.findIndex((s) => s.songId === song.songId)
     music.playSongs(librarySongs, index >= 0 ? index : 0)
     music.openFullPlayer()
@@ -190,8 +211,12 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
         </p>
       ) : null}
 
-      {/* now playing — quick transport without leaving the drawer */}
-      {music.current ? (
+      {/* realtime Jam — Host controls synchronized playback for every rider */}
+      {jam ? <TripJamPanel jam={jam} /> : null}
+
+      {/* now playing — quick transport without leaving the drawer (hidden
+          while the user is inside a Jam; the Jam panel shows the current song) */}
+      {music.current && !jamLocksPlayback ? (
         <section className="mb-5 rounded-2xl border border-white/10 bg-white/[0.03] p-3" aria-label="Now playing">
           <div className="flex items-center gap-3">
             {music.current.song.thumbnailUrl !== null ? (
@@ -301,16 +326,16 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                 <li
                   key={r.videoId}
                   role="button"
-                  tabIndex={0}
-                  onClick={() => music.play(searchResultToPlayerSong(r))}
+                  tabIndex={jamLocksPlayback ? -1 : 0}
+                  onClick={() => { if (!jamLocksPlayback) music.play(searchResultToPlayerSong(r)) }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
+                    if (!jamLocksPlayback && (e.key === 'Enter' || e.key === ' ')) {
                       e.preventDefault()
                       music.play(searchResultToPlayerSong(r))
                     }
                   }}
-                  className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 transition hover:border-accent/40 hover:bg-white/[0.06]"
-                  title={`Play ${r.title}`}
+                  className={`flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 transition ${jamLocksPlayback ? 'opacity-90' : 'cursor-pointer hover:border-accent/40 hover:bg-white/[0.06]'}`}
+                  title={jamLocksPlayback ? 'The Jam Host controls playback' : `Play ${r.title}`}
                 >
                   <ResultThumb src={r.thumbnailUrl} />
                   <div className="min-w-0 flex-1">
@@ -388,7 +413,7 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                 <li
                   key={item.id}
                   role="button"
-                  tabIndex={0}
+                  tabIndex={jamActive && jamParticipant && !jamHost ? -1 : 0}
                   onClick={() => handlePlaySong(item)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -396,8 +421,8 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                       handlePlaySong(item)
                     }
                   }}
-                  className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 transition hover:border-accent/40 hover:bg-white/[0.06]"
-                  title={`Play ${item.title}`}
+                  className={`flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 transition ${jamActive && jamParticipant && !jamHost ? 'opacity-90' : 'cursor-pointer hover:border-accent/40 hover:bg-white/[0.06]'}`}
+                  title={jamActive && jamParticipant && !jamHost ? 'The Jam Host controls playback' : `Play ${item.title}`}
                 >
                   <ResultThumb src={item.thumbnailUrl} />
                   <div className="min-w-0 flex-1">
@@ -414,14 +439,38 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                       <User size={9} aria-hidden="true" /> added by {item.addedBy.name}
                     </p>
                   </div>
-                  {isCurrentSong ? (
+                  {jamActive && jamParticipant && !jamHost ? (
+                    isCurrentSong ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled
+                        aria-label={`${item.title} is playing in the Jam`}
+                        title="Playing in the Jam"
+                      >
+                        <AudioLines size={13} aria-hidden="true" />
+                        <span className="hidden sm:inline">In Jam</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled
+                        aria-label={`${item.title} cannot be played while a Jam is active`}
+                        title="The Jam Host controls playback"
+                      >
+                        <Play size={13} aria-hidden="true" />
+                        <span className="hidden sm:inline">In Jam</span>
+                      </Button>
+                    )
+                  ) : isCurrentSong ? (
                     <Button
                       size="sm"
                       variant={music.state.isPlaying ? 'outline' : 'accent'}
                       loading={!!music.state.loading && music.state.isPlaying}
                       onClick={(e) => {
                         e.stopPropagation()
-                        music.togglePlay()
+                        handlePlaySong(item)
                       }}
                       aria-label={music.state.isPlaying ? `Pause ${item.title}` : `Resume ${item.title}`}
                     >
@@ -436,7 +485,8 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
                         e.stopPropagation()
                         handlePlaySong(item)
                       }}
-                      aria-label={`Play ${item.title}`}
+                      aria-label={jamHost ? `Play ${item.title} in the Jam` : `Play ${item.title}`}
+                      title={jamHost ? 'Play this song in the Jam for everyone' : undefined}
                     >
                       <Play size={13} aria-hidden="true" />
                       <span className="hidden sm:inline">Play</span>

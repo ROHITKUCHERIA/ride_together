@@ -17,6 +17,7 @@ import ManageTripDrawer from '../app/components/ManageTripDrawer'
 import { trip as mockTrip } from '../data/mockData'
 import { useMusicPlayer } from '../music/context'
 import { useTripRealtime } from '../features/live-map/hooks/useTripRealtime'
+import { useTripJam } from '../jam/useTripJam'
 import { rideController } from '../features/live-map/services/rideController'
 import type { ConnectionState, DrawerKind, GpsState, Rider, TripInfo } from '../types'
 import type { MemberRole, Trip, TripMember } from '../types/api'
@@ -64,6 +65,10 @@ export default function TripRoom({
      socket connection, room membership and GPS watcher; the room just
      subscribes to the same stores the live map uses. */
   const realtime = useTripRealtime({ tripId, status: apiTrip?.status, roster: thisTrip.riders })
+
+  /* Realtime Jam session — shares the same Socket.IO connection and keeps every
+     rider's player synchronized to the Host's server-authoritative playback. */
+  const jam = useTripJam({ tripId, userId: currentUserId })
 
   const [riders, setRiders] = useState<Rider[]>(thisTrip.riders)
   const [connection, setConnection] = useState<ConnectionState>('connected')
@@ -188,6 +193,7 @@ export default function TripRoom({
           role={role}
           currentUserId={currentUserId}
           onOpenPlaylists={handleOpenPlaylists}
+          jam={jam}
         /> : null}
       <RidersDrawer open={drawer === 'riders'} onClose={() => setDrawer(null)} riders={riders} onlineCount={onlineCount} />
       <TripInfoDrawer

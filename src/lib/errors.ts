@@ -109,6 +109,22 @@ export function friendlyError(status: number, errorCode: string, _backendMessage
       return "You don't have permission to do that."
     case 'PLAYLIST_REORDER_MISMATCH':
       return 'The playlist changed before the reorder could be applied.'
+    case 'JAM_NOT_FOUND':
+      return "This Jam is no longer available."
+    case 'JAM_ALREADY_ACTIVE':
+      return 'A Jam is already active for this trip.'
+    case 'JAM_ENDED':
+      return 'This Jam is no longer active.'
+    case 'JAM_NOT_HOST':
+      return 'Only the Jam Host can control playback.'
+    case 'JAM_ALREADY_JOINED':
+      return 'You are already in this Jam.'
+    case 'JAM_NOT_JOINED':
+      return 'You are not in this Jam.'
+    case 'JAM_INVALID_ACTION':
+      return 'That playback action is not allowed right now.'
+    case 'JAM_SONG_NOT_IN_TRIP':
+      return "That song isn't in this trip's music library."
     default:
       break
   }

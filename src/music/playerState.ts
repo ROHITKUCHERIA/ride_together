@@ -38,6 +38,11 @@ export interface MusicState {
   /** Increments when a track restarts while already loaded (prev/next wrap). */
   replayNonce: number
   fullPlayerOpen: boolean
+  /** When true the player is under Jam control — local transport actions are
+   *  ignored and playback is driven purely by the authoritative server state. */
+  jamMode: boolean
+  /** Increments on every Jam sync so the provider re-applies seek/play. */
+  jamSyncNonce: number
 }
 
 export type MusicAction =
@@ -65,6 +70,10 @@ export type MusicAction =
   | { type: 'RESUME_PLAY' }
   | { type: 'OPEN_FULL' }
   | { type: 'CLOSE_FULL' }
+  | { type: 'SET_JAM_MODE'; mode: boolean }
+  | { type: 'JAM_SYNC'; song: PlayerSong; position: number; isPlaying: boolean }
+  | { type: 'JAM_END' }
+  | { type: 'RESTORE_LAST_PLAY'; song: PlayerSong; position: number }
 
 export function initialMusicState(volume = 80, muted = false): MusicState {
   return {
@@ -83,6 +92,8 @@ export function initialMusicState(volume = 80, muted = false): MusicState {
     retryNonce: 0,
     replayNonce: 0,
     fullPlayerOpen: false,
+    jamMode: false,
+    jamSyncNonce: 0,
   }
 }
 
@@ -133,7 +144,26 @@ function startLoading(base: MusicState, index: number, isPlaying: boolean): Musi
   }
 }
 
+/** Local playback actions that are inert while a Jam owns the player. */
+const LOCAL_TRANSPORT_ACTIONS: ReadonlySet<MusicAction['type']> = new Set([
+  'PLAY_SONGS',
+  'PLAY_AT',
+  'TOGGLE_PLAY',
+  'NEXT',
+  'PREV',
+  'SEEK',
+  'ADD_TO_QUEUE',
+  'INSERT_NEXT',
+  'REMOVE_FROM_QUEUE',
+  'CLEAR_QUEUE',
+])
+
 export function musicReducer(state: MusicState, action: MusicAction): MusicState {
+  // In Jam mode the Host (server) is the only authority over playback. Local
+  // transport actions are ignored so a participant can never desync the shared
+  // player; JAM_* actions drive the player instead.
+  if (state.jamMode && LOCAL_TRANSPORT_ACTIONS.has(action.type)) return state
+
   switch (action.type) {
     case 'PLAY_SONGS': {
       if (action.items.length === 0) return state
@@ -192,6 +222,11 @@ export function musicReducer(state: MusicState, action: MusicAction): MusicState
     }
 
     case 'SONG_ENDED': {
+      // In a Jam, natural song end never auto-advances — the Host decides the
+      // next song and publishes it as authoritative Jam state.
+      if (state.jamMode) {
+        return { ...state, isPlaying: false, currentTime: state.duration, needsPlayPrompt: false }
+      }
       const next = state.currentIndex + 1
       if (next < state.queue.length) {
         return startLoading(state, next, true)
@@ -307,6 +342,69 @@ export function musicReducer(state: MusicState, action: MusicAction): MusicState
 
     case 'CLOSE_FULL': {
       return { ...state, fullPlayerOpen: false }
+    }
+
+    case 'SET_JAM_MODE': {
+      if (state.jamMode === action.mode) return state
+      return { ...state, jamMode: action.mode }
+    }
+
+    case 'JAM_SYNC': {
+      // Load the authoritative Jam song when it differs from the local queue.
+      // `jamSyncNonce` drives the provider effect that waits for the player to
+      // be ready, then seeks to the server position and applies play/pause.
+      const current = currentItem(state)
+      let next = state
+      if (!current || current.song.videoId !== action.song.videoId) {
+        next = {
+          ...state,
+          queue: toQueue([action.song]),
+          currentIndex: 0,
+          loading: true,
+          error: null,
+          needsPlayPrompt: false,
+          duration: action.song.duration && action.song.duration > 0 ? action.song.duration : state.duration,
+        }
+      }
+      return {
+        ...next,
+        currentTime: clampTime(action.position, next.duration),
+        isPlaying: action.isPlaying,
+        needsPlayPrompt: action.isPlaying ? next.needsPlayPrompt : false,
+        jamMode: true,
+        jamSyncNonce: next.jamSyncNonce + 1,
+      }
+    }
+
+    case 'JAM_END': {
+      // Leave Jam mode and stop the shared playback. The current track stays
+      // available so the user can resume it locally after the Jam is gone.
+      return {
+        ...state,
+        jamMode: false,
+        isPlaying: false,
+        needsPlayPrompt: false,
+      }
+    }
+
+    case 'RESTORE_LAST_PLAY': {
+      // Restore the song the user was listening to before a Jam took over their
+      // player — shown paused at the position where they left it.
+      const queue = toQueue([action.song])
+      return {
+        ...state,
+        queue,
+        currentIndex: 0,
+        isPlaying: false,
+        loading: true,
+        needsPlayPrompt: false,
+        error: null,
+        duration: action.song.duration ?? 0,
+        currentTime: clampTime(action.position, action.song.duration ?? 0),
+        jamMode: false,
+        jamSyncNonce: state.jamSyncNonce + 1,
+        replayNonce: state.replayNonce + 1,
+      }
     }
   }
 }

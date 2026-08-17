@@ -13,6 +13,7 @@ import { TripLocationsModule } from './locations/locations.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { MusicModule } from './music/music.module';
 import { PlaylistsModule } from './playlists/playlists.module';
+import { JamModule } from './jam/jam.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -40,6 +41,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     RealtimeModule,
     MusicModule,
     PlaylistsModule,
+    JamModule,
   ],
   controllers: [AppController],
   providers: [

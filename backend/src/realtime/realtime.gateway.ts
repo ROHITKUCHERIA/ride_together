@@ -17,6 +17,9 @@ import { ApiException } from '../common/filters/all-exceptions.filter';
 import { validateLocationUpdate } from './location-update';
 import type { LocationUpdateInput } from './location-update';
 import { computeRiderStatus, RiderStatus } from './rider-status';
+import { JamService } from '../jam/jam.service';
+import { JamRealtimeService } from './jam-realtime.service';
+import { tripRoomName } from './rooms';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
 
 interface SessionUser {
@@ -29,12 +32,7 @@ interface TripSession {
   lastStatus: RiderStatus;
 }
 
-const ROOM_PREFIX = 'trip:';
 const STATUS_SWEEP_INTERVAL_MS = 10_000;
-
-function roomName(tripId: string): string {
-  return `${ROOM_PREFIX}${tripId}`;
-}
 
 @WebSocketGateway({ namespace: '/' })
 export class RealtimeGateway
@@ -57,9 +55,13 @@ export class RealtimeGateway
     private readonly realtime: RealtimeService,
     private readonly locations: TripLocationService,
     private readonly config: AppConfig,
+    private readonly jam: JamService,
+    private readonly jamRealtime: JamRealtimeService,
   ) {}
 
   afterInit(): void {
+    // REST-originated Jam mutations broadcast through the shared server.
+    this.jamRealtime.attach(this.server);
     this.statusTicker = setInterval(
       () => this.sweepStatuses(),
       STATUS_SWEEP_INTERVAL_MS,
@@ -90,7 +92,13 @@ export class RealtimeGateway
     if (joined) {
       const userId = (client.data as SessionUser).user?.id;
       for (const tripId of joined.keys()) {
-        client.to(roomName(tripId)).emit('rider:offline', { userId });
+        client.to(tripRoomName(tripId)).emit('rider:offline', { userId });
+        if (userId) {
+          // A disconnected Host makes its Jam unavailable/paused for everyone;
+          // a disconnected participant leaves the Jam so counts stay accurate.
+          void this.jam.markHostDisconnected(tripId, userId);
+          void this.jam.removeParticipantOnDisconnect(tripId, userId);
+        }
       }
     }
     this.sessions.delete(client.id);
@@ -115,12 +123,12 @@ export class RealtimeGateway
 
     if (!(await this.authorize(client, tripId, user.id))) return;
 
-    await client.join(roomName(tripId));
+    await client.join(tripRoomName(tripId));
     this.trackSession(client, tripId, user.id, null);
 
     const riders = await this.locations.getRiderLocations(tripId);
     client.emit('trip:joined', { tripId, riders });
-    client.to(roomName(tripId)).emit('rider:online', { userId: user.id });
+    client.to(tripRoomName(tripId)).emit('rider:online', { userId: user.id });
   }
 
   @SubscribeMessage('location:start')
@@ -135,9 +143,9 @@ export class RealtimeGateway
 
     if (!(await this.authorize(client, tripId, user.id))) return;
 
-    await client.join(roomName(tripId));
+    await client.join(tripRoomName(tripId));
     this.trackSession(client, tripId, user.id, null);
-    client.to(roomName(tripId)).emit('rider:online', { userId: user.id });
+    client.to(tripRoomName(tripId)).emit('rider:online', { userId: user.id });
   }
 
   @SubscribeMessage('location:update')
@@ -181,14 +189,14 @@ export class RealtimeGateway
       return;
     }
 
-    await client.join(roomName(value.tripId));
+    await client.join(tripRoomName(value.tripId));
     this.trackSession(client, value.tripId, user.id, value.timestamp);
 
     const rider = await this.locations.getRiderLocation(value.tripId, user.id);
     if (rider) {
       // Broadcast to every trip member (including the sender) — this is how
       // each rider learns everyone's live position.
-      client.to(roomName(value.tripId)).emit('location:updated', rider);
+      client.to(tripRoomName(value.tripId)).emit('location:updated', rider);
       client.emit('location:updated', rider);
     }
   }
@@ -203,7 +211,7 @@ export class RealtimeGateway
     const tripId = this.normalizeTripId(payload?.tripId, client);
     if (!tripId) return;
     this.forgetSession(client.id, tripId);
-    client.to(roomName(tripId)).emit('rider:offline', { userId: user.id });
+    client.to(tripRoomName(tripId)).emit('rider:offline', { userId: user.id });
   }
 
   @SubscribeMessage('trip:leave')
@@ -216,8 +224,30 @@ export class RealtimeGateway
     const tripId = this.normalizeTripId(payload?.tripId, client);
     if (!tripId) return;
     this.forgetSession(client.id, tripId);
-    await client.leave(roomName(tripId));
-    client.to(roomName(tripId)).emit('rider:offline', { userId: user.id });
+    await client.leave(tripRoomName(tripId));
+    client.to(tripRoomName(tripId)).emit('rider:offline', { userId: user.id });
+  }
+
+  /**
+   * Host presence heartbeat. Only the Jam Host's beats are tracked; a host that
+   * comes back online after a disconnect triggers a fresh `jam:state` so every
+   * participant sees the Host as available again without a manual refresh.
+   */
+  @SubscribeMessage('jam:heartbeat')
+  async onJamHeartbeat(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { tripId?: unknown },
+  ): Promise<void> {
+    const user = this.requireUser(client);
+    if (!user) return;
+    const tripId = this.normalizeTripId(payload?.tripId, client);
+    if (!tripId) return;
+    if (!(await this.authorize(client, tripId, user.id))) return;
+
+    const result = await this.jam.heartbeat(tripId, user.id);
+    if (result.changed && result.state) {
+      this.server.to(tripRoomName(tripId)).emit('jam:state', result.state);
+    }
   }
 
   // ------------------------------------------------------------- internals
@@ -295,7 +325,7 @@ export class RealtimeGateway
         if (status === session.lastStatus) continue;
         session.lastStatus = status;
         this.server
-          .to(roomName(tripId))
+          .to(tripRoomName(tripId))
           .emit('rider:status', { userId: session.userId, status });
         // Stop sweeping riders that are now fully offline — they will
         // re-announce on their next location update.

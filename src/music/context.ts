@@ -23,8 +23,25 @@ export interface MusicPlayerContextValue {
   retryCurrent: () => void
   /** Clears the "Tap play to start" prompt and resumes playback. */
   resumePlay: () => void
+  /** Pauses the current song. */
+  pause: () => void
   openFullPlayer: () => void
   closeFullPlayer: () => void
+  /** Enables/disables the Jam remote-control mode. While enabled, local
+   *  transport actions (play/pause/next/prev/seek/queue edits) are ignored. */
+  setJamMode: (mode: boolean) => void
+  /** Applies an authoritative Jam state transition: loads `song` if needed,
+   *  moves to `position` (seconds) and sets play/pause. The provider re-seeks
+   *  when the player is ready. */
+  jamSync: (song: PlayerSong, position: number, isPlaying: boolean) => void
+  /** Exits Jam mode, stops the shared playback and returns to normal local
+   *  player behavior (the current track stays available). */
+  jamEnd: () => void
+  /** Restores the song the user was listening to before a Jam took over their
+   *  player — shown paused at the position where they left it. */
+  restoreLastPlay: (song: PlayerSong, position: number) => void
+  /** Reads the live playback position straight from the underlying player. */
+  getPlayerPosition: () => number
 }
 
 export const MusicPlayerContext = createContext<MusicPlayerContextValue | null>(null)

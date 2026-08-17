@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client'
 import { API_URL } from '../config'
 import type { LocationUpdate, RiderLocation, RealtimeConnection } from '../types'
+import type { JamDeletedPayload, JamStatePayload } from '../../../types/jam'
 import { BrowserLocationService } from './LocationService'
 import type { LocationService, RealtimeService } from './RealtimeService'
 import { ensureAuthContext, type AuthContext } from './backend'
@@ -61,12 +62,22 @@ export class SocketRealtimeService implements RealtimeService {
   private riderListener: ((riders: RiderLocation[]) => void) | null = null
   private connectionListener: ((state: RealtimeConnection) => void) | null = null
 
+  /** Jam listeners — the Jam feature shares THIS socket, never a second one. */
+  private jamStateListener: ((state: JamStatePayload) => void) | null = null
+  private jamDeletedListener: ((payload: JamDeletedPayload) => void) | null = null
+  private jamErrorListener: ((err: { code?: string; message?: string }) => void) | null = null
+
   constructor(options: SocketRealtimeOptions = {}) {
     this.tripIdOverride = options.tripId
   }
 
   get identity(): { userId: string; tripId: string } | null {
     return this.ctx ? { userId: this.ctx.userId, tripId: this.ctx.tripId } : null
+  }
+
+  /** Whether the underlying transport is currently connected. */
+  get connected(): boolean {
+    return this.socket?.connected ?? false
   }
 
   async connect(tripId?: string): Promise<void> {
@@ -144,6 +155,11 @@ export class SocketRealtimeService implements RealtimeService {
       if (err?.code === 'RATE_LIMITED') return // client already paces itself
       console.warn('[realtime] trip error:', err?.code, err?.message)
     })
+
+    // Jam realtime events ride the same single connection as GPS.
+    s.on('jam:state', (state: JamStatePayload) => this.jamStateListener?.(state))
+    s.on('jam:deleted', (payload: JamDeletedPayload) => this.jamDeletedListener?.(payload))
+    s.on('jam:error', (err: { code?: string; message?: string }) => this.jamErrorListener?.(err))
   }
 
   private mapRider(r: ServerRider): void {
@@ -231,6 +247,37 @@ export class SocketRealtimeService implements RealtimeService {
     return () => {
       if (this.connectionListener === listener) this.connectionListener = null
     }
+  }
+
+  /** Subscribes to authoritative `jam:state` broadcasts (same socket). */
+  onJamState(listener: (state: JamStatePayload) => void): () => void {
+    this.jamStateListener = listener
+    return () => {
+      if (this.jamStateListener === listener) this.jamStateListener = null
+    }
+  }
+
+  /** Subscribes to `jam:deleted` broadcasts (same socket). */
+  onJamDeleted(listener: (payload: JamDeletedPayload) => void): () => void {
+    this.jamDeletedListener = listener
+    return () => {
+      if (this.jamDeletedListener === listener) this.jamDeletedListener = null
+    }
+  }
+
+  /** Subscribes to jam transport errors (same socket). */
+  onJamError(listener: (err: { code?: string; message?: string }) => void): () => void {
+    this.jamErrorListener = listener
+    return () => {
+      if (this.jamErrorListener === listener) this.jamErrorListener = null
+    }
+  }
+
+  /** Emits a Jam control/heartbeat event on the shared socket when connected. */
+  emitJamEvent(event: string, payload?: unknown): void {
+    const s = this.socket
+    if (!s || !s.connected) return
+    s.emit(event, payload)
   }
 
   private setConnection(state: RealtimeConnection): void {
