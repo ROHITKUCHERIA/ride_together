@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { MusicPlayerContext } from './context'
-import type { MusicPlayerContextValue } from './context'
+import type { JamHostTransport, MusicPlayerContextValue } from './context'
 import { currentItem, initialMusicState } from './playerState'
 import { musicReducer } from './playerState'
 import type { PlayerSong } from './playerState'
@@ -14,10 +14,14 @@ const AUTOPLAY_GRACE_MS = 2_500
 const PROGRESS_INTERVAL_MS = 500
 
 function makeInitialState(): ReturnType<typeof initialMusicState> {
-  let volume = 80
+  let volume = 100
   let muted = false
   try {
-    const saved = Number(window.localStorage.getItem(VOLUME_KEY))
+    // localStorage.getItem returns null when unset — Number(null) is 0, which
+    // would silently reset the default to "muted". Treat a missing value as
+    // "no saved choice" and fall back to full device volume.
+    const volumeRaw = window.localStorage.getItem(VOLUME_KEY)
+    const saved = volumeRaw === null ? NaN : Number(volumeRaw)
     if (Number.isFinite(saved) && saved >= 0 && saved <= 100) volume = saved
     muted = window.localStorage.getItem(MUTE_KEY) === '1'
   } catch {
@@ -57,6 +61,20 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   const stateRef = useRef(state)
   stateRef.current = state
+  /** While the current user is the HOST of an active Jam, local transport
+   *  actions route here so their controls drive the shared playback. */
+  const hostTransportRef = useRef<JamHostTransport | null>(null)
+
+  /** Routes a transport action to the Jam Host handler when one is registered
+   *  and the player is under Jam control; returns true if consumed. */
+  const delegateToJam = useCallback((fn: (t: JamHostTransport) => void): boolean => {
+    const t = hostTransportRef.current
+    if (t && stateRef.current.jamMode) {
+      fn(t)
+      return true
+    }
+    return false
+  }, [])
 
   const clearAutoplayTimer = useCallback(() => {
     if (autoplayTimerRef.current !== null) {
@@ -370,14 +388,20 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [state.ready, currentVideoId, state.loading, attemptPlay, scheduleAutoplayCheck, clearAutoplayTimer])
 
-  // Volume / mute.
+  // Volume / mute. While a Jam owns the player, playback runs at 100% (full
+  // device volume) so every rider hears the shared music at the same loudness
+  // and hardware/device volume keys control it directly — the app's own quieter
+  // setting must not starve the Jam. The rider's saved volume/mute is restored
+  // as soon as the Jam ends.
   useEffect(() => {
     const player = playerRef.current
     if (!player || !state.ready) return
-    player.setVolume(state.volume)
-    if (state.muted) player.mute()
+    const volume = state.jamMode ? 100 : state.volume
+    const muted = state.jamMode ? false : state.muted
+    player.setVolume(volume)
+    if (muted) player.mute()
     else player.unMute()
-  }, [state.ready, state.volume, state.muted])
+  }, [state.ready, state.volume, state.muted, state.jamMode])
 
   // Progress polling while playing.
   useEffect(() => {
@@ -430,39 +454,53 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, [authStatus])
 
   const playSongs = useCallback((items: PlayerSong[], startIndex = 0) => {
+    if (delegateToJam((t) => {
+      const index = Math.min(Math.max(0, startIndex), items.length - 1)
+      const song = items[index]
+      if (song) t.playSong(song)
+    })) return
     if (stateRef.current.jamMode) return
     dispatch({ type: 'PLAY_SONGS', items, startIndex })
-  }, [])
+  }, [delegateToJam])
 
   const play = useCallback((song: PlayerSong) => {
+    if (delegateToJam((t) => t.playSong(song))) return
     if (stateRef.current.jamMode) return
     dispatch({ type: 'PLAY_SONGS', items: [song], startIndex: 0 })
-  }, [])
+  }, [delegateToJam])
 
   const playIndex = useCallback((index: number) => {
+    if (delegateToJam((t) => {
+      const item = stateRef.current.queue[index]
+      if (item) t.playSong(item.song)
+    })) return
     if (stateRef.current.jamMode) return
     dispatch({ type: 'PLAY_AT', index })
-  }, [])
+  }, [delegateToJam])
 
   const togglePlay = useCallback(() => {
+    if (delegateToJam((t) => t.togglePlay())) return
     if (stateRef.current.jamMode) return
     dispatch({ type: 'TOGGLE_PLAY' })
-  }, [])
+  }, [delegateToJam])
 
   const next = useCallback(() => {
+    if (delegateToJam((t) => t.next())) return
     if (stateRef.current.jamMode) return
     dispatch({ type: 'NEXT' })
-  }, [])
+  }, [delegateToJam])
 
   const prev = useCallback(() => {
+    if (delegateToJam((t) => t.prev())) return
     if (stateRef.current.jamMode) return
     dispatch({ type: 'PREV' })
-  }, [])
+  }, [delegateToJam])
 
   const seek = useCallback((seconds: number) => {
+    if (delegateToJam((t) => t.seek(seconds))) return
     if (stateRef.current.jamMode) return
     dispatch({ type: 'SEEK', seconds })
-  }, [])
+  }, [delegateToJam])
 
   const setVolume = useCallback((volume: number) => {
     dispatch({ type: 'SET_VOLUME', volume })
@@ -535,6 +573,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     return playerRef.current?.getCurrentTime() ?? 0
   }, [])
 
+  const setJamHostTransport = useCallback((handler: JamHostTransport | null) => {
+    hostTransportRef.current = handler
+  }, [])
+
   const value = useMemo<MusicPlayerContextValue>(
     () => ({
       state,
@@ -562,6 +604,7 @@ setJamMode,
       jamEnd,
       restoreLastPlay,
       getPlayerPosition,
+      setJamHostTransport,
     }),
     [
       state,
@@ -588,6 +631,7 @@ setJamMode,
       jamEnd,
       restoreLastPlay,
       getPlayerPosition,
+      setJamHostTransport,
     ],
   )
 

@@ -89,6 +89,10 @@ describe('musicReducer', () => {
     expect(negative.currentTime).toBe(0)
   })
 
+  it('defaults to full (device) volume', () => {
+    expect(initialMusicState().volume).toBe(100)
+  })
+
   it('SET_VOLUME clamps to 0..100', () => {
     let next = musicReducer(initialMusicState(), { type: 'SET_VOLUME', volume: 150 })
     expect(next.volume).toBe(100)

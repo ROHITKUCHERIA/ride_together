@@ -1,6 +1,20 @@
 import { createContext, useContext } from 'react'
 import type { MusicState, PlayerSong, QueueItem } from './playerState'
 
+/**
+ * Playback transport delegated from the local player while the user is the
+ * HOST of an active Jam. The Jam layer registers this so the Host's controls
+ * (playlists, full player, mini player, …) drive the server-authoritative
+ * shared playback from anywhere in the app instead of the local reducer.
+ */
+export interface JamHostTransport {
+  playSong: (song: PlayerSong) => void
+  togglePlay: () => void
+  next: () => void
+  prev: () => void
+  seek: (seconds: number) => void
+}
+
 export interface MusicPlayerContextValue {
   state: MusicState
   current: QueueItem | null
@@ -42,6 +56,11 @@ export interface MusicPlayerContextValue {
   restoreLastPlay: (song: PlayerSong, position: number) => void
   /** Reads the live playback position straight from the underlying player. */
   getPlayerPosition: () => number
+  /** Registers the Jam Host's transport delegation (or null to remove it).
+   *  While registered the player is under Jam control, local transport actions
+   *  are routed to the handler (server-authoritative playback) for THIS user
+   *  only — everyone else stays locked out as before. */
+  setJamHostTransport: (handler: JamHostTransport | null) => void
 }
 
 export const MusicPlayerContext = createContext<MusicPlayerContextValue | null>(null)

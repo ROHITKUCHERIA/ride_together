@@ -75,7 +75,11 @@ export type MusicAction =
   | { type: 'JAM_END' }
   | { type: 'RESTORE_LAST_PLAY'; song: PlayerSong; position: number }
 
-export function initialMusicState(volume = 80, muted = false): MusicState {
+/**
+ * Default playback volume. 100 = full device volume, so hardware volume keys
+ * control the audio directly. The app never ships a quieter default.
+ */
+export function initialMusicState(volume = 100, muted = false): MusicState {
   return {
     queue: [],
     currentIndex: -1,

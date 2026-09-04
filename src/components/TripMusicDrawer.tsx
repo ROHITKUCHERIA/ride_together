@@ -62,9 +62,10 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
   const jamActive = jam?.ui.phase === 'active'
   const jamHost = jam?.isHost === true
   const jamParticipant = jam?.isParticipant === true
-  /** In the Jam: Host controls it; participants follow it; everyone else
-   *  (like a member who has not joined) keeps normal local playback. */
-  const jamLocksPlayback = jamActive && (jamHost || jamParticipant)
+  /** Participants follow the Jam (playback is locked for them); the Host may
+   *  tap anything and it plays through the Jam; members with no active Jam
+   *  keep normal local playback. */
+  const jamLocksPlayback = jamActive && jamParticipant && !jamHost
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<YouTubeVideoResult[]>([])
   const [nextPageToken, setNextPageToken] = useState<string | null>(null)

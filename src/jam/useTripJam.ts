@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useMusicPlayer } from '../music/context'
+import type { JamHostTransport } from '../music/context'
 import type { PlayerSong } from '../music/playerState'
 import { useStore } from '../features/live-map/state/observable'
 import { useConnection } from '../features/live-map/hooks/useLiveMap'
@@ -40,7 +41,7 @@ export interface TripJamApi {
   join: () => Promise<void>
   leave: () => Promise<void>
   deleteJam: () => Promise<void>
-  control: (action: JamControlAction, opts?: { songId?: string; position?: number }) => Promise<void>
+  control: (action: JamControlAction, opts?: { songId?: string; position?: number; isPlaying?: boolean }) => Promise<void>
   seek: (position: number) => Promise<void>
 }
 
@@ -372,12 +373,13 @@ export function useTripJam({
   }, [handleJamDeleted])
 
   const control = useCallback(
-    async (action: JamControlAction, opts: { songId?: string; position?: number } = {}) => {
+    async (action: JamControlAction, opts: { songId?: string; position?: number; isPlaying?: boolean } = {}) => {
       const state = jamStore.getState().jam
       if (!state) return
       const input: JamControlInput = { action }
       if (opts.songId !== undefined) input.songId = opts.songId
       if (opts.position !== undefined) input.position = opts.position
+      if (opts.isPlaying !== undefined) input.isPlaying = opts.isPlaying
       if (action === 'play' || action === 'pause') {
         input.position = opts.position ?? musicRef.current.getPlayerPosition()
       }
@@ -397,6 +399,53 @@ export function useTripJam({
     },
     [control],
   )
+
+  // ---- Host transport delegation -------------------------------------
+  // While this user IS the Jam Host with an active session, the app-wide music
+  // player routes local transport actions (play a song, play/pause, next/prev,
+  // seek) to the server-authoritative Jam. That is what lets the Host "play
+  // from anywhere" — playlist, full player, mini player, search — instead of
+  // only from the Jam panel. Participants stay locked to Jam playback; members
+  // outside a Jam keep normal local playback.
+  const seekTimerRef = useRef<number | null>(null)
+  useEffect(() => {
+    const m = musicRef.current
+    const jamId = ui.jam?.jamId ?? null
+    if (!isHost || !jamId) {
+      m.setJamHostTransport(null)
+      return
+    }
+    const transport: JamHostTransport = {
+      playSong: (song) => {
+        // `song.id` is the stable library songId the Jam server resolves (the
+        // server rejects songs that are not in the trip's music library).
+        void control('song_changed', { songId: song.id, isPlaying: true, position: 0 })
+      },
+      togglePlay: () => {
+        void control(jamStore.getState().jam?.isPlaying ? 'pause' : 'play')
+      },
+      next: () => void control('next'),
+      prev: () => void control('seek', { position: 0 }),
+      seek: (seconds) => {
+        // The FullPlayer seek bar fires on every drag move — coalesce into one
+        // trailing control after the drag settles rather than one request per
+        // pixel (which would spam the server with broadcasts).
+        if (seekTimerRef.current !== null) window.clearTimeout(seekTimerRef.current)
+        seekTimerRef.current = window.setTimeout(() => {
+          seekTimerRef.current = null
+          void control('seek', { position: seconds })
+        }, 300)
+      },
+    }
+    m.setJamHostTransport(transport)
+    return () => {
+      if (seekTimerRef.current !== null) {
+        window.clearTimeout(seekTimerRef.current)
+        seekTimerRef.current = null
+      }
+      m.setJamHostTransport(null)
+    }
+  }, [isHost, ui.jam?.jamId, control])
 
   return { ui, isHost, isParticipant, createJam, join, leave, deleteJam, control, seek }
 }
