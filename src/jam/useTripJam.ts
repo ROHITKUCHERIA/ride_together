@@ -14,6 +14,7 @@ import {
   joinJam as apiJoin,
   leaveJam as apiLeave,
 } from '../api/jam'
+import { addTripSong, listTripMusic } from '../api/music'
 import { jamStore } from './jamStore'
 import type { JamUiState } from './jamStore'
 import {
@@ -417,8 +418,36 @@ export function useTripJam({
     }
     const transport: JamHostTransport = {
       playSong: (song) => {
-        // `song.id` is the stable library songId the Jam server resolves (the
-        // server rejects songs that are not in the trip's music library).
+        // `song.id` is the stable library songId the Jam server resolves. A song
+        // picked straight from a YouTube search result has id === videoId (it has
+        // no library songId yet): guarantee it exists in the trip library first,
+        // then start playing it in the Jam for everyone.
+        if (song.id === song.videoId) {
+          if (!tripIdRef.current) return
+          void addTripSong(tripIdRef.current, song.videoId)
+            .then((added) =>
+              control('song_changed', { songId: added.songId, isPlaying: true, position: 0 }),
+            )
+            .catch((err) => {
+              if (isApiError(err) && err.errorCode === 'SONG_ALREADY_ADDED') {
+                // Raced with an add elsewhere — resolve the existing songId and
+                // play that. The library route is quiet (no loader flash).
+                void listTripMusic(tripIdRef.current!, { quiet: true })
+                  .then((songs) => {
+                    const existing = songs.find((s) => s.youtubeVideoId === song.videoId)
+                    if (existing) {
+                      void control('song_changed', { songId: existing.songId, isPlaying: true, position: 0 })
+                    }
+                  })
+                  .catch(() => {
+                    // Silent — the next tap or library refresh will recover.
+                  })
+              } else {
+                jamStore.update({ notice: isApiError(err) ? err.message : 'Unable to play this song in the Jam.' })
+              }
+            })
+          return
+        }
         void control('song_changed', { songId: song.id, isPlaying: true, position: 0 })
       },
       togglePlay: () => {
