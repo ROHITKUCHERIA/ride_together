@@ -89,7 +89,7 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
     setLibraryLoading(true)
     setLibraryError(null)
     try {
-      setLibrary(await listTripMusic(tripIdRef.current))
+      setLibrary(await listTripMusic(tripIdRef.current, { quiet: true }))
     } catch (err) {
       setLibraryError(isApiError(err) ? err.message : 'Unable to load the trip music.')
     } finally {
@@ -116,7 +116,7 @@ export default function TripMusicDrawer({ open, onClose, tripId, role, currentUs
     setSearching(true)
     setSearchError(null)
     try {
-      const page = await searchTripMusic(tripIdRef.current, q, pageToken)
+      const page = await searchTripMusic(tripIdRef.current, q, pageToken, { quiet: true })
       setResults((prev) => (pageToken ? [...prev, ...page.items] : page.items))
       setNextPageToken(page.nextPageToken)
       setSearched(true)

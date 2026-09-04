@@ -52,9 +52,9 @@ export default function PlaylistDrawer({
     setError(null)
     try {
       const [mine, tripOnes] = await Promise.all([
-        listMyPlaylists(),
+        listMyPlaylists({ quiet: true }),
         tripId
-          ? listTripPlaylists(tripId).catch(() => [])
+          ? listTripPlaylists(tripId, { quiet: true }).catch(() => [])
           : Promise.resolve([]),
       ])
       setMyPlaylists(mine)

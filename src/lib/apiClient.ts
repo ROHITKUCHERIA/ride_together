@@ -3,13 +3,18 @@ import { getAccessToken, getRefreshToken, setTokens } from './tokens'
 import { ApiError, friendlyError } from './errors'
 import { startRequest, endRequest } from './loadingState'
 
-interface RequestOptions {
+export interface RequestOptions {
   method?: string
   body?: unknown
   auth?: boolean
   headers?: Record<string, string>
   /** Set to false to skip the automatic single-flight token refresh on 401. */
   retryOnAuth?: boolean
+  /** Background/polling reads that have their own in-UI loading state. Quiet
+   *  requests never trigger the GlobalLoader overlay (which blocks the whole
+   *  screen), so a silent members poll can't flash "Loading…" every few
+   *  seconds on top of the page the user is interacting with. */
+  quiet?: boolean
 }
 
 interface ApiEnvelope<T> {
@@ -159,7 +164,8 @@ export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  startRequest()
+  const quiet = options.quiet === true
+  if (!quiet) startRequest()
   try {
     const retry = options.retryOnAuth !== false
     try {
@@ -180,6 +186,6 @@ export async function apiRequest<T>(
       throw err
     }
   } finally {
-    endRequest()
+    if (!quiet) endRequest()
   }
 }

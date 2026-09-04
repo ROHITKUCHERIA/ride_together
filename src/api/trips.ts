@@ -1,4 +1,5 @@
 import { apiRequest } from '../lib/apiClient'
+import type { RequestOptions } from '../lib/apiClient'
 import type {
   CreateTripInput,
   MemberRole,
@@ -8,12 +9,16 @@ import type {
   UpdateTripInput,
 } from '../types/api'
 
-export async function listTrips(page = 1, limit = 50): Promise<Paginated<Trip>> {
-  return apiRequest<Paginated<Trip>>(`/api/trips?page=${page}&limit=${limit}`)
+export async function listTrips(
+  page = 1,
+  limit = 50,
+  options: RequestOptions = {},
+): Promise<Paginated<Trip>> {
+  return apiRequest<Paginated<Trip>>(`/api/trips?page=${page}&limit=${limit}`, options)
 }
 
-export async function getTrip(tripId: string): Promise<Trip> {
-  return apiRequest<Trip>(`/api/trips/${tripId}`)
+export async function getTrip(tripId: string, options: RequestOptions = {}): Promise<Trip> {
+  return apiRequest<Trip>(`/api/trips/${tripId}`, options)
 }
 
 export async function createTrip(input: CreateTripInput): Promise<Trip> {
@@ -48,8 +53,11 @@ export async function cancelTrip(tripId: string): Promise<void> {
   await apiRequest(`/api/trips/${tripId}/cancel`, { method: 'POST' })
 }
 
-export async function getTripMembers(tripId: string): Promise<TripMember[]> {
-  return apiRequest<TripMember[]>(`/api/trips/${tripId}/members`)
+export async function getTripMembers(
+  tripId: string,
+  options: RequestOptions = {},
+): Promise<TripMember[]> {
+  return apiRequest<TripMember[]>(`/api/trips/${tripId}/members`, options)
 }
 
 export interface RiderLocationPayload {

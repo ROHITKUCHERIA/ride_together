@@ -62,7 +62,7 @@ export default function TripMusicSearch({
   /* Know which videos are already stored so playing doesn't re-add them. */
   useEffect(() => {
     let cancelled = false
-    listTripMusic(tripId)
+    listTripMusic(tripId, { quiet: true })
       .then((songs) => {
         if (!cancelled) setAddedIds(new Set(songs.map((s) => s.youtubeVideoId)))
       })
@@ -84,7 +84,7 @@ export default function TripMusicSearch({
     setSearching(true)
     setSearchError(null)
     try {
-      const page = await searchTripMusic(tripId, trimmed)
+      const page = await searchTripMusic(tripId, trimmed, undefined, { quiet: true })
       setResults(page.items)
     } catch (err) {
       setResults([])

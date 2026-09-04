@@ -30,7 +30,7 @@ export default function Dashboard() {
   const load = useCallback(async () => {
     setState({ kind: 'loading' })
     try {
-      const page = await listTrips(1, 50)
+      const page = await listTrips(1, 50, { quiet: true })
       setState({ kind: 'ready', trips: Array.isArray(page?.data) ? page.data : [] })
     } catch (err) {
       setState({

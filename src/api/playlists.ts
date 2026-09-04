@@ -1,4 +1,5 @@
 import { apiRequest } from '../lib/apiClient'
+import type { RequestOptions } from '../lib/apiClient'
 import type {
   CreatePlaylistInput,
   Playlist,
@@ -8,13 +9,16 @@ import type {
 } from '../types/api'
 
 /** Lists my playlists (personal + any trip playlists I own). */
-export async function listMyPlaylists(): Promise<Playlist[]> {
-  return apiRequest<Playlist[]>('/api/playlists')
+export async function listMyPlaylists(options: RequestOptions = {}): Promise<Playlist[]> {
+  return apiRequest<Playlist[]>('/api/playlists', options)
 }
 
 /** Lists the playlists visible in a trip (public + my own). */
-export async function listTripPlaylists(tripId: string): Promise<Playlist[]> {
-  return apiRequest<Playlist[]>(`/api/trips/${tripId}/playlists`)
+export async function listTripPlaylists(
+  tripId: string,
+  options: RequestOptions = {},
+): Promise<Playlist[]> {
+  return apiRequest<Playlist[]>(`/api/trips/${tripId}/playlists`, options)
 }
 
 /** Fetches one playlist including its songs. */

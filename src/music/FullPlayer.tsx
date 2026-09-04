@@ -318,7 +318,7 @@ function QueuePanel({ music, menuKey, onMenuKey, tripId }: QueuePanelProps) {
     if (!tripId || libraryLoaded) return
     setLibraryLoading(true)
     try {
-      const songs = await listTripMusic(tripId)
+      const songs = await listTripMusic(tripId, { quiet: true })
       setLibrary(songs)
       setLibraryLoaded(true)
     } catch {

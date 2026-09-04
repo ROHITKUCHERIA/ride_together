@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import TripRoom from '../../components/TripRoom'
 import FullPageLoader from '../../components/ui/FullPageLoader'
@@ -9,6 +9,10 @@ import { useAuth } from '../../auth/AuthContext'
 import { toDemoTrip, tripMapRoute } from '../tripInfo'
 import type { MemberRole, Trip, TripMember } from '../../types/api'
 
+/** How often the member roster is re-fetched while the room is open. Set high
+ *  enough that the free-tier backend is not hammered every few seconds. */
+const MEMBER_POLL_MS = 30_000
+
 export default function TripRoomPage() {
   const { tripId } = useParams<{ tripId: string }>()
   const navigate = useNavigate()
@@ -18,53 +22,51 @@ export default function TripRoomPage() {
   const [members, setMembers] = useState<TripMember[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Guards against overlapping refresh requests when the backend is slow — a
+  // poll tick is skipped while the previous one is still in flight.
+  const inFlightRef = useRef(false)
 
-  const load = useCallback(async () => {
-    if (!tripId) return
-    setLoading(true)
-    setError(null)
+  const fetchRoom = useCallback(async (): Promise<void> => {
+    if (!tripId || inFlightRef.current) return
+    inFlightRef.current = true
     try {
-      const [t, m] = await Promise.all([getTrip(tripId), getTripMembers(tripId)])
-      if (!t || !Array.isArray(m)) {
-        throw new Error('Unable to load this trip.')
-      }
-      setTrip(t)
-      setMembers(m)
+      // Reads are `quiet`: they skip the global loading overlay — this page
+      // already shows its own loader for the first fetch, and the periodic
+      // member poll must never flash a full-screen "Loading…" every cycle.
+      const [t, m] = await Promise.all([
+        getTrip(tripId, { quiet: true }),
+        getTripMembers(tripId, { quiet: true }),
+      ])
+      if (t) setTrip(t)
+      if (Array.isArray(m)) setMembers(m)
+      setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load this trip.')
     } finally {
+      inFlightRef.current = false
       setLoading(false)
     }
   }, [tripId])
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void fetchRoom()
+  }, [fetchRoom])
 
-  const refresh = useCallback(async () => {
-    if (!tripId) return
-    try {
-      const [t, m] = await Promise.all([getTrip(tripId), getTripMembers(tripId)])
-      if (!t || !Array.isArray(m)) {
-        throw new Error('Unable to load this trip.')
-      }
-      setTrip(t)
-      setMembers(m)
-      setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to load this trip.')
-    }
-  }, [tripId])
+  const refresh = fetchRoom
 
   /* The backend broadcasts location events but not membership changes. Poll
      the member roster while the room is open so newly joined riders appear in
-     the Riders list, online counts and trip info without a manual refresh. */
+     the Riders list, online counts and trip info without a manual refresh.
+     The poll is quiet (never triggers the global loader), pauses when the tab
+     is hidden or offline, and never overlaps itself. */
   const isEnded = trip?.status === 'COMPLETED' || trip?.status === 'CANCELLED'
   useEffect(() => {
     if (!tripId || isEnded) return
     const id = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return
       void refresh()
-    }, 10000)
+    }, MEMBER_POLL_MS)
     return () => window.clearInterval(id)
   }, [tripId, isEnded, refresh])
 
@@ -86,7 +88,7 @@ export default function TripRoomPage() {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-night px-4">
         <div className="flex w-full max-w-md flex-col gap-3">
-          <ErrorState title="Unable to load this trip" message={error ?? 'This trip is unavailable.'} onRetry={load} />
+          <ErrorState title="Unable to load this trip" message={error ?? 'This trip is unavailable.'} onRetry={fetchRoom} />
           <Button variant="outline" block onClick={() => navigate('/app')}>
             Back to trips
           </Button>

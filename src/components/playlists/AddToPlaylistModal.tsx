@@ -57,8 +57,10 @@ export default function AddToPlaylistModal({
     setAddedTo(null)
     try {
       const [mine, tripOnes] = await Promise.all([
-        listMyPlaylists(),
-        tripId ? listTripPlaylists(tripId).catch(() => []) : Promise.resolve([]),
+        listMyPlaylists({ quiet: true }),
+        tripId
+          ? listTripPlaylists(tripId, { quiet: true }).catch(() => [])
+          : Promise.resolve([]),
       ])
       setMyPlaylists(mine)
       setTripPlaylists(tripOnes)

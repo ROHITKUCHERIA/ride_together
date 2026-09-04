@@ -1,4 +1,5 @@
 import { apiRequest } from '../lib/apiClient'
+import type { RequestOptions } from '../lib/apiClient'
 import type { TripMusicSearchPage, TripSongItem } from '../types/api'
 
 /** Searches YouTube (server-side, cached) for songs a member can add. */
@@ -6,17 +7,22 @@ export async function searchTripMusic(
   tripId: string,
   q: string,
   pageToken?: string,
+  options: RequestOptions = {},
 ): Promise<TripMusicSearchPage> {
   const params = new URLSearchParams({ q })
   if (pageToken) params.set('pageToken', pageToken)
   return apiRequest<TripMusicSearchPage>(
     `/api/trips/${tripId}/music/search?${params.toString()}`,
+    options,
   )
 }
 
 /** Lists the shared music library for a trip. */
-export async function listTripMusic(tripId: string): Promise<TripSongItem[]> {
-  return apiRequest<TripSongItem[]>(`/api/trips/${tripId}/music`)
+export async function listTripMusic(
+  tripId: string,
+  options: RequestOptions = {},
+): Promise<TripSongItem[]> {
+  return apiRequest<TripSongItem[]>(`/api/trips/${tripId}/music`, options)
 }
 
 /** Adds a song (by YouTube video id) to the trip's shared library. */

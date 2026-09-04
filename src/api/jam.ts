@@ -1,12 +1,16 @@
 import { apiRequest } from '../lib/apiClient'
+import type { RequestOptions } from '../lib/apiClient'
 import type {
   JamControlInput,
   JamStatePayload,
 } from '../types/jam'
 
 /** Active Jam for a trip, or null when none exists. */
-export function getTripJam(tripId: string): Promise<JamStatePayload | null> {
-  return apiRequest<JamStatePayload | null>(`/api/trips/${tripId}/jam`)
+export function getTripJam(
+  tripId: string,
+  options: RequestOptions = {},
+): Promise<JamStatePayload | null> {
+  return apiRequest<JamStatePayload | null>(`/api/trips/${tripId}/jam`, options)
 }
 
 /** Create a Jam (caller becomes Host). Returns the existing one when active. */

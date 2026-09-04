@@ -167,7 +167,7 @@ export function useTripJam({
     const t = tripIdRef.current
     if (!t) return
     try {
-      const state = await getTripJam(t)
+      const state = await getTripJam(t, { quiet: true })
       if (state) {
         applyJamState(state)
       } else {
@@ -202,7 +202,7 @@ export function useTripJam({
     skewRef.current = 0
     jamStore.update({ phase: 'loading', endedMessage: null, notice: null })
 
-    void getTripJam(tripId)
+    void getTripJam(tripId, { quiet: true })
       .then((state) => {
         if (cancelled) return
         if (state) applyJamState(state)

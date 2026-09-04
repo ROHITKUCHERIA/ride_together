@@ -156,7 +156,7 @@ describe('PlaylistDrawer', () => {
     expect(await screen.findByText(/2 songs · Rohit/)).toBeInTheDocument()
     expect(await screen.findByText(/Goa Bike Trip/)).toBeInTheDocument()
     expect(api.listMyPlaylists).toHaveBeenCalled()
-    expect(api.listTripPlaylists).toHaveBeenCalledWith('trip-1')
+    expect(api.listTripPlaylists).toHaveBeenCalledWith('trip-1', expect.objectContaining({ quiet: true }))
   })
 
   it('shows an empty state when there are no playlists', async () => {
