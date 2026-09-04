@@ -55,7 +55,7 @@ export default function Drawer({ open, onClose, title, eyebrow, children }: Draw
             onClick={onClose}
           />
           <motion.aside
-            className={`fixed flex flex-col overflow-hidden border-white/10 bg-charcoal/90 backdrop-blur-2xl ${
+            className={`fixed flex flex-col overflow-hidden rt-glass ${
               isMobile
                 ? 'inset-x-0 bottom-0 max-h-[86dvh] rounded-t-3xl border-t'
                 : 'top-0 right-0 h-full w-full max-w-[420px] border-l'

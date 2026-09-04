@@ -6,6 +6,7 @@ import App from './App.tsx'
 import { AuthProvider } from './auth/AuthContext'
 import { ThemeProvider } from './theme/ThemeContext'
 import ErrorBoundary from './components/ui/ErrorBoundary'
+import GlobalLoader from './components/GlobalLoader'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -14,6 +15,7 @@ createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <ErrorBoundary>
             <App />
+            <GlobalLoader />
           </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>

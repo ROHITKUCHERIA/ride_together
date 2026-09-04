@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AlertTriangle,
   CalendarX2,
@@ -13,6 +13,7 @@ import {
   Copy,
   Check,
   Loader2,
+  ChevronDown,
 } from 'lucide-react'
 import Drawer from '../../components/Drawer'
 import Button from '../../components/ui/Button'
@@ -44,12 +45,101 @@ interface ManageTripDrawerProps {
   onDeleted: () => void
 }
 
-const ACCENTS = ['#ff6b2c', '#3ddc84', '#4dc4ff', '#ffb14d', '#e0242f', '#c084fc', '#34d399', '#22d3ee', '#f472b6']
+const ACCENTS = ['#4a9eff', '#3ddc84', '#4dc4ff', '#ffb14d', '#e0242f', '#c084fc', '#34d399', '#22d3ee', '#f472b6']
 
 function accentFor(id: string): string {
   let h = 0
   for (let i = 0; i < id.length; i++) h = (h << 5) - h + id.charCodeAt(i)
   return ACCENTS[Math.abs(h) % ACCENTS.length]
+}
+
+const ROLE_OPTIONS: MemberRole[] = ['MEMBER', 'ADMIN']
+
+/**
+ * Role picker rendered in the DOM (button + attached menu) instead of a native
+ * `<select>`. Native option popups are positioned by the OS/browser and detach
+ * from their control inside the animated, scroll-locked drawer — this menu is
+ * absolutely positioned under its button, so it always opens in the right place.
+ */
+function RoleMenu({
+  memberName,
+  role,
+  disabled,
+  onChange,
+}: {
+  memberName: string
+  role: MemberRole
+  disabled: boolean
+  onChange: (next: MemberRole) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Change ${memberName}'s role`}
+        disabled={disabled}
+        className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-white/12 bg-night/60 py-1.5 pl-3 pr-2.5 text-xs font-medium text-bone outline-none transition focus:border-ember disabled:opacity-50"
+      >
+        {role === 'ADMIN' ? 'Admin' : 'Member'}
+        <ChevronDown
+          size={14}
+          aria-hidden="true"
+          className={`text-mist/60 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open ? (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden="true" />
+          <div
+            role="menu"
+            aria-label={`Change ${memberName}'s role`}
+            className="absolute left-0 top-full z-20 mt-1.5 min-w-32 overflow-hidden rounded-lg border border-white/12 bg-night p-1 shadow-2xl shadow-black/60"
+          >
+            {ROLE_OPTIONS.map((option) => {
+              const selected = option === role
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={selected}
+                  onClick={() => {
+                    setOpen(false)
+                    if (!selected) onChange(option)
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs font-medium transition focus-visible:outline-2 focus-visible:outline-ember ${
+                    selected ? 'bg-ember/15 text-ember' : 'text-bone hover:bg-white/5'
+                  }`}
+                >
+                  {selected ? (
+                    <Check size={13} aria-hidden="true" />
+                  ) : (
+                    <span className="w-[13px]" aria-hidden="true" />
+                  )}
+                  {option === 'ADMIN' ? 'Admin' : 'Member'}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
 }
 
 export default function ManageTripDrawer({
@@ -239,28 +329,34 @@ export default function ManageTripDrawer({
               const busyRemove = busy === `remove:${m.id}`
               return (
                 <li key={m.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Avatar name={m.name} accent={accentFor(m.id)} size={40} />
-                    <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-2 font-display text-sm font-medium text-bone">
-                        <span className="truncate">{m.name}</span>
-                        {isMe ? <span className="rounded-full border border-ember/40 bg-ember/15 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-ember">You</span> : null}
-                        {m.role === 'OWNER' ? <Crown size={13} className="shrink-0 text-ember" aria-hidden="true" /> : null}
+                  <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3">
+                    <Avatar name={m.name} accent={accentFor(m.id)} size={40} className="row-start-1" />
+
+                    <div className="row-start-1 min-w-0">
+                      <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-display text-sm font-medium text-bone">
+                        <span className="min-w-0 truncate">{m.name}</span>
+                        {isMe ? (
+                          <span className="shrink-0 rounded-full border border-ember/40 bg-ember/15 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-ember">
+                            You
+                          </span>
+                        ) : null}
+                        {m.role === 'OWNER' ? (
+                          <Crown size={13} className="shrink-0 text-ember" aria-hidden="true" />
+                        ) : null}
                       </p>
-                      <MemberRoleBadge role={m.role} />
+                      <div className="mt-1.5">
+                        <MemberRoleBadge role={m.role} />
+                      </div>
                     </div>
+
                     {manageable ? (
-                      <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-                        <select
-                          aria-label={`Change ${m.name}'s role`}
-                          value={m.role}
+                      <div className="col-span-full row-start-2 flex flex-wrap items-center gap-1.5 sm:justify-end">
+                        <RoleMenu
+                          memberName={m.name}
+                          role={m.role}
                           disabled={busy !== null}
-                          onChange={(e) => handleRoleChange(m, e.target.value as MemberRole)}
-                          className="min-h-9 rounded-lg border border-white/12 bg-night/60 px-2 text-xs font-medium text-bone outline-none transition focus:border-ember disabled:opacity-50"
-                        >
-                          <option value="MEMBER">Member</option>
-                          <option value="ADMIN">Admin</option>
-                        </select>
+                          onChange={(next) => handleRoleChange(m, next)}
+                        />
                         {isOwner ? (
                           <button
                             type="button"
@@ -291,7 +387,9 @@ export default function ManageTripDrawer({
                         </button>
                       </div>
                     ) : isMe && !isOwner ? (
-                      <span className="shrink-0 text-[10px] uppercase tracking-wider text-mist/40">You</span>
+                      <span className="col-span-full row-start-2 text-[10px] uppercase tracking-wider text-mist/40 sm:justify-self-end">
+                        You
+                      </span>
                     ) : null}
                   </div>
                   {busyRole ? (

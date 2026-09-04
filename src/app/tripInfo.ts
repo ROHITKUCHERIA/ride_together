@@ -1,7 +1,7 @@
 import type { Rider, TripInfo } from '../types'
 import type { Trip, TripMember } from '../types/api'
 
-const ACCENTS = ['#ff6b2c', '#3ddc84', '#4dc4ff', '#ffb14d', '#e0242f', '#c084fc', '#34d399', '#22d3ee', '#f472b6']
+const ACCENTS = ['#4a9eff', '#3ddc84', '#4dc4ff', '#ffb14d', '#e0242f', '#c084fc', '#34d399', '#22d3ee', '#f472b6']
 
 export function formatTripDate(iso: string): string {
   const d = new Date(iso)

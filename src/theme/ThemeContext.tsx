@@ -65,7 +65,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.classList.toggle('rt-theme-day', isDay)
     root.style.colorScheme = theme
     const meta = document.querySelector('meta[name="theme-color"]')
-    if (meta) meta.setAttribute('content', isDay ? '#f3f1ea' : '#0a0a0c')
+    if (meta) meta.setAttribute('content', isDay ? '#faf9f7' : '#000000')
   }, [theme])
 
   // Auto mode: re-resolve on an interval and whenever the tab regains focus,

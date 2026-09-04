@@ -19,7 +19,7 @@ const TILE_ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO'
 
 const PIN_ICON = divIcon({
   className: 'rt-coord-pin',
-  html: `<div style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:2px solid #fff;background:#ff6b2c;box-shadow:0 0 0 4px rgba(255,107,44,0.25),0 8px 18px -4px rgba(0,0,0,0.6);font-size:15px;color:#fff;">📍</div>`,
+  html: `<div style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:2px solid #fff;background:#4a9eff;box-shadow:0 0 0 4px rgba(74,158,255,0.25),0 8px 18px -4px rgba(0,0,0,0.6);font-size:15px;color:#fff;">📍</div>`,
   iconSize: [34, 34],
   iconAnchor: [17, 17],
 })

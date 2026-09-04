@@ -38,7 +38,7 @@ export default function ThemeToggle({ compact = false }: ThemeToggleProps) {
             onClick={() => setPreference(value)}
             className={`grid place-items-center rounded-full transition focus-visible:outline-2 focus-visible:outline-accent active:scale-95 ${
               compact ? 'size-7' : 'size-8'
-            } ${active ? 'bg-ember/20 text-bone' : 'text-mist hover:text-bone'}`}
+            } ${active ? 'bg-accent/20 text-bone' : 'text-mist hover:text-bone'}`}
           >
             <Icon size={compact ? 11 : 13} aria-hidden="true" />
           </button>

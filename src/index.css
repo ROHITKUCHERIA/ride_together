@@ -4,20 +4,20 @@
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-ui: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  --color-night: #0a0a0c;
-  --color-charcoal: #16161a;
-  --color-ash: #232327;
-  --color-bone: #f4efe7;
-  --color-mist: #b8b4ac;
-  --color-ember: #ff6b2c;
-  --color-sunset: #ffb14d;
+  --color-night: #000000;
+  --color-charcoal: #0a0a0f;
+  --color-ash: #111118;
+  --color-bone: #f0f0f5;
+  --color-mist: #8a8a96;
+  --color-ember: #3451d2;
+  --color-sunset: #6b8cff;
   --color-road: #e0242f;
   --color-live: #3ddc84;
   --color-dusk: #1b1730;
 
-  /* Spotify-tinted accent for playing states (cyan base, green influence) */
-  --color-accent: color-mix(in oklab, #3ddc84 100%, #3ddc84);
-  --color-accent-soft: color-mix(in oklab, var(--color-accent) 22%, transparent);
+  /* Blue accent for interactive and playing states */
+  --color-accent: #4a9eff;
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 20%, transparent);
 
   --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -127,7 +127,7 @@ button {
 }
 
 ::selection {
-  background: rgba(255, 107, 44, 0.35);
+  background: rgba(74, 158, 255, 0.30);
   color: #fff;
 }
 
@@ -226,7 +226,7 @@ button {
 
 /* ---------- text helpers ---------- */
 .rt-stroke {
-  -webkit-text-stroke: 1px rgba(244, 239, 231, 0.55);
+  -webkit-text-stroke: 1px rgba(240, 240, 245, 0.55);
   color: transparent;
 }
 
@@ -239,7 +239,7 @@ button {
 
 /* ---------- leaflet theme ---------- */
 .leaflet-container {
-  background: #101013 !important;
+  background: #000000 !important;
   font-family: var(--font-ui);
 }
 
@@ -263,7 +263,7 @@ button {
   }
 }
 .leaflet-control-attribution {
-  background: rgba(10, 10, 12, 0.55) !important;
+  background: rgba(0, 0, 0, 0.60) !important;
   color: rgba(255, 255, 255, 0.45) !important;
   font-size: 9px !important;
 }
@@ -271,13 +271,13 @@ button {
   color: rgba(255, 255, 255, 0.45) !important;
 }
 .leaflet-control-zoom {
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
   box-shadow: none !important;
 }
 .leaflet-control-zoom a {
-  background: rgba(16, 16, 19, 0.85) !important;
-  color: #f4efe7 !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  color: #f0f0f5 !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
 }
 
 /* ==========================================================================
@@ -291,20 +291,20 @@ button {
   color-scheme: light;
 
   /* semantic surfaces & text */
-  --color-night: #f3f1ea;
+  --color-night: #faf9f7;
   --color-charcoal: #ffffff;
-  --color-ash: #ebe7de;
-  --color-bone: #1a1916;
-  --color-mist: #6f6a61;
+  --color-ash: #f0ede8;
+  --color-bone: #111118;
+  --color-mist: #6b6b78;
 
-  /* accents/status — pushed darker for AA contrast on light ground */
-  --color-ember: #e5550f;
-  --color-sunset: #c4650e;
+  /* accents/status — blue primary */
+  --color-ember: #4a6cf7;
+  --color-sunset: #6b8cff;
   --color-road: #c91120;
-  --color-live: #0e7a44;
+  --color-live: #16a34a;
   --color-dusk: #ece8f6;
-  --color-accent: #0d7a46;
-  --color-accent-soft: color-mix(in oklab, var(--color-accent) 20%, transparent);
+  --color-accent: #4a6cf7;
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 16%, transparent);
 
   /* treat "white" overlays as dark-on-light so border-white/10, bg-white/5,
      ring-white/10 etc. render as subtle light-modes cards/borders */
@@ -331,26 +331,26 @@ button {
 /* Light map chrome for day mode (tiles are themed separately via the Light
    provider; these fix Leaflet's controls/base while Light tiles load). */
 .rt-theme-day .leaflet-container {
-  background: #e9e6df !important;
+  background: #f0ede8 !important;
 }
 .rt-theme-day .leaflet-control-zoom {
-  border-color: rgba(26, 25, 22, 0.18) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
 }
 .rt-theme-day .leaflet-control-zoom a {
-  background: rgba(255, 255, 255, 0.92) !important;
-  color: #1a1916 !important;
-  border-color: rgba(26, 25, 22, 0.12) !important;
+  background: rgba(250, 249, 247, 0.95) !important;
+  color: #111118 !important;
+  border-color: rgba(0, 0, 0, 0.10) !important;
 }
 .rt-theme-day .leaflet-control-zoom a:hover {
   background: #ffffff !important;
 }
 .rt-theme-day .leaflet-control-attribution {
   background: rgba(255, 255, 255, 0.72) !important;
-  color: rgba(26, 25, 22, 0.55) !important;
+  color: rgba(0, 0, 0, 0.50) !important;
 }
 .rt-theme-day .leaflet-control-attribution a {
-  color: rgba(26, 25, 22, 0.55) !important;
+  color: rgba(0, 0, 0, 0.50) !important;
 }
 
 /* Components that must keep their cinematic dark look even in day mode
@@ -358,13 +358,44 @@ button {
    back — utility classes on descendants re-resolve these variables. */
 .rt-theme-day .rt-dark-surface {
   color-scheme: dark;
-  --color-night: #0a0a0c;
-  --color-charcoal: #16161a;
-  --color-ash: #232327;
-  --color-bone: #f4efe7;
-  --color-mist: #b8b4ac;
+  --color-night: #000000;
+  --color-charcoal: #0a0a0f;
+  --color-ash: #111118;
+  --color-bone: #f0f0f5;
+  --color-mist: #8a8a96;
   --color-dusk: #1b1730;
   --color-white: #ffffff;
-  --color-accent: color-mix(in oklab, #3ddc84 100%, #3ddc84);
-  --color-accent-soft: color-mix(in oklab, var(--color-accent) 22%, transparent);
+  --color-accent: #4a9eff;
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 20%, transparent);
+  --color-ember: #3451d2;
+  --color-sunset: #6b8cff;
+}
+
+/* ==========================================================================
+   Glass-morphism utility classes
+   Dark: deep semi-transparent layers with subtle white borders
+   Light: white semi-transparent layers with subtle dark borders
+   ========================================================================== */
+.rt-glass {
+  background: rgba(10, 10, 15, 0.82);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rt-glass-subtle {
+  background: rgba(10, 10, 15, 0.60);
+  backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.rt-theme-day .rt-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.rt-theme-day .rt-glass-subtle {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }

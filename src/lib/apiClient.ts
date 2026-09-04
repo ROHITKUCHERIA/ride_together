@@ -1,6 +1,7 @@
 import { API_URL } from '../features/live-map/config'
 import { getAccessToken, getRefreshToken, setTokens } from './tokens'
 import { ApiError, friendlyError } from './errors'
+import { startRequest, endRequest } from './loadingState'
 
 interface RequestOptions {
   method?: string
@@ -150,27 +151,35 @@ async function doRequest<T>(path: string, options: RequestOptions): Promise<T> {
  * Central API client. Attaches the access token automatically and transparently
  * refreshes it once when it expires — but never loops: a failed refresh clears
  * the session and redirects to /login.
+ *
+ * Tracks global loading state so the GlobalLoader overlay can show while
+ * requests are in flight, preventing double-clicks.
  */
 export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const retry = options.retryOnAuth !== false
+  startRequest()
   try {
-    return await doRequest<T>(path, { ...options, retryOnAuth: false })
-  } catch (err) {
-    if (!retry) throw err
-    if (err instanceof ApiError && err.status === 401) {
-      // A refresh that fails with a network error (e.g. mid network switch)
-      // rejects here and propagates as a network error — the session is still
-      // valid, so it must not be signed out.
-      const refreshed = await refreshSession()
-      if (refreshed) {
-        return doRequest<T>(path, { ...options, retryOnAuth: false })
+    const retry = options.retryOnAuth !== false
+    try {
+      return await doRequest<T>(path, { ...options, retryOnAuth: false })
+    } catch (err) {
+      if (!retry) throw err
+      if (err instanceof ApiError && err.status === 401) {
+        // A refresh that fails with a network error (e.g. mid network switch)
+        // rejects here and propagates as a network error — the session is still
+        // valid, so it must not be signed out.
+        const refreshed = await refreshSession()
+        if (refreshed) {
+          return doRequest<T>(path, { ...options, retryOnAuth: false })
+        }
+        await notifyExpired()
+        throw new ApiError(401, 'UNAUTHENTICATED', 'Your session has expired. Please sign in again.')
       }
-      await notifyExpired()
-      throw new ApiError(401, 'UNAUTHENTICATED', 'Your session has expired. Please sign in again.')
+      throw err
     }
-    throw err
+  } finally {
+    endRequest()
   }
 }

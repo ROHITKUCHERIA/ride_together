@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Crown,
   Loader2,
@@ -38,6 +38,13 @@ export default function TripJamPanel({ jam }: { jam: TripJamApi }) {
   const position = dragPos ?? music.state.currentTime
   const duration = music.state.duration > 0 ? music.state.duration : (current?.song.duration ?? 0)
   const pct = duration > 0 ? Math.min(100, Math.max(0, (position / duration) * 100)) : 0
+  const songId = state?.currentSong?.songId ?? null
+
+  // A drag preview belongs to the song it started on: drop it when the Jam
+  // moves to another song so a stale value can never shadow live progress.
+  useEffect(() => {
+    setDragPos(null)
+  }, [songId])
 
   const connectionOk = ui.connection === 'connected'
   const hostOffline = state ? !state.hostOnline : false
@@ -187,7 +194,14 @@ export default function TripJamPanel({ jam }: { jam: TripJamApi }) {
             value={position}
             max={duration || 1}
             onChange={(v) => setDragPos(v)}
-            onCommit={(v) => void jam.seek(v)}
+            onCommit={(v) => {
+              // Release the drag preview the moment the seek is committed: the
+              // live player position takes over again. Without this the bar and
+              // time stay frozen at the dragged value while the song plays on.
+              setDragPos(null)
+              void jam.seek(v)
+            }}
+            onCancel={() => setDragPos(null)}
           />
         ) : (
           <div className="relative h-[3px] w-full overflow-hidden rounded-full bg-white/10" aria-hidden="true">
@@ -281,29 +295,40 @@ export default function TripJamPanel({ jam }: { jam: TripJamApi }) {
           </Button>
         )}
 
-        {isHost ? (
-          confirmEnd ? (
-            <div className="flex w-full flex-col gap-2 rounded-xl border border-road/35 bg-road/10 p-3">
-              <p className="text-xs font-medium text-bone">End Jam?</p>
-              <p className="text-[11px] leading-relaxed text-mist/70">
-                This will remove all participants from the Jam and stop synchronized playback. The trip music stays.
-              </p>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" block onClick={() => setConfirmEnd(false)}>
-                  Cancel
-                </Button>
-                <Button variant="danger" block onClick={() => void jam.deleteJam()}>
-                  End Jam
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button variant="danger" onClick={() => setConfirmEnd(true)} aria-label="End the Jam">
-              End Jam
-            </Button>
-          )
+        {isHost && !confirmEnd ? (
+          <Button
+            variant="danger"
+            onClick={() => setConfirmEnd(true)}
+            aria-label="End the Jam"
+            className="shrink-0 whitespace-nowrap"
+          >
+            End Jam
+          </Button>
         ) : null}
       </div>
+
+      {/* Compact end-Jam confirm: its own row below the buttons (never squeezed
+          beside them), one short line plus Cancel/End — no tall description box. */}
+      {isHost && confirmEnd ? (
+        <div className="mt-2 rounded-xl border border-road/35 bg-road/10 px-3 py-2">
+          <p className="text-xs font-medium text-bone">End the Jam for everyone?</p>
+          <div className="mt-1.5 flex items-center gap-2">
+            <Button variant="ghost" block onClick={() => setConfirmEnd(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              block
+              onClick={() => {
+                setConfirmEnd(false)
+                void jam.deleteJam()
+              }}
+            >
+              End Jam
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
@@ -314,11 +339,13 @@ function HostSeekBar({
   max,
   onChange,
   onCommit,
+  onCancel,
 }: {
   value: number
   max: number
   onChange: (v: number) => void
   onCommit: (v: number) => void
+  onCancel: () => void
 }) {
   const trackRef = useRef<HTMLDivElement | null>(null)
   const draggingRef = useRef(false)
@@ -360,6 +387,7 @@ function HostSeekBar({
       }}
       onPointerCancel={() => {
         draggingRef.current = false
+        onCancel()
       }}
       onKeyDown={(e) => {
         if (e.key === 'ArrowRight') onCommit(Math.min(max, value + 5))

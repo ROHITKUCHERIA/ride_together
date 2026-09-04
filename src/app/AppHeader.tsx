@@ -35,7 +35,7 @@ export default function AppHeader({ actions }: AppHeaderProps) {
             aria-label="Your profile"
             className="shrink-0 rounded-full transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-ember"
           >
-            <Avatar name={initials} accent="#ff6b2c" size={36} />
+            <Avatar name={initials} accent="#4a9eff" size={36} />
           </Link>
         </div>
       </div>

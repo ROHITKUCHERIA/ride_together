@@ -17,7 +17,7 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(70% 50% at 50% 100%, rgba(255,107,44,0.12), transparent 70%), radial-gradient(60% 45% at 50% 0%, rgba(59,35,70,0.25), transparent 70%)',
+            'radial-gradient(70% 50% at 50% 100%, rgba(74,158,255,0.12), transparent 70%), radial-gradient(60% 45% at 50% 0%, rgba(52,81,210,0.25), transparent 70%)',
         }}
         aria-hidden="true"
       />
