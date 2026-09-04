@@ -28,9 +28,7 @@ const JAM_INCLUDE = {
   },
 } as const;
 
-type JamRow = Awaited<
-  ReturnType<PrismaService['jamSession']['findUnique']>
-> & {
+type JamRow = Awaited<ReturnType<PrismaService['jamSession']['findUnique']>> & {
   host: { id: string; name: string };
   currentSong: {
     id: string;
@@ -134,16 +132,22 @@ export class JamService {
     }
     await this.access.requireMember(jam.tripId, userId);
 
-    const existing = await this.prisma.jamParticipant.findUnique({
+    // The loaded Jam already carries every participant — idempotent re-joins
+    // are detected here, without an extra query or a (useless) broadcast.
+    const alreadyJoined = jam.participants.some((p) => p.user.id === userId);
+    if (alreadyJoined) {
+      return this.toState(jam);
+    }
+
+    // `upsert` is race-safe against concurrent joins thanks to the unique
+    // (jamSessionId, userId) index, and refreshes `lastSeenAt` on repeat joins.
+    await this.prisma.jamParticipant.upsert({
       where: {
         jamSessionId_userId: { jamSessionId: jamId, userId },
       },
+      update: { lastSeenAt: new Date() },
+      create: { jamSessionId: jamId, userId },
     });
-    if (!existing) {
-      await this.prisma.jamParticipant.create({
-        data: { jamSessionId: jamId, userId },
-      });
-    }
 
     const fresh = await this.findJam(jamId);
     const state = this.toState(fresh);
@@ -163,9 +167,15 @@ export class JamService {
       );
     }
 
-    await this.prisma.jamParticipant.deleteMany({
+    const deleted = await this.prisma.jamParticipant.deleteMany({
       where: { jamSessionId: jamId, userId },
     });
+
+    // Nothing was actually removed (the user was already gone) — the participant
+    // list is unchanged, so there is no state change to broadcast.
+    if (deleted.count === 0) {
+      return this.toState(jam);
+    }
 
     const fresh = await this.findJam(jamId);
     const state = this.toState(fresh);
@@ -255,7 +265,10 @@ export class JamService {
    * host just came back online so the gateway can broadcast it; otherwise the
    * heartbeat is silent.
    */
-  async heartbeat(tripId: string, userId: string): Promise<{
+  async heartbeat(
+    tripId: string,
+    userId: string,
+  ): Promise<{
     state: JamState | null;
     changed: boolean;
   }> {
@@ -263,15 +276,30 @@ export class JamService {
     if (!jam || jam.hostUserId !== userId) {
       return { state: null, changed: false };
     }
-    const now = Date.now();
-    const wasOnline = now - jam.hostLastSeenAt.getTime() < HOST_OFFLINE_THRESHOLD_MS;
+    const now = new Date();
+    const wasOnline =
+      now.getTime() - jam.hostLastSeenAt.getTime() < HOST_OFFLINE_THRESHOLD_MS;
+
+    if (wasOnline) {
+      // Presence is NOT content — a silent heartbeat must not bump
+      // `stateVersion`, or clients would treat routine heartbeats as state
+      // changes and resync playback for no reason.
+      await this.prisma.jamSession.update({
+        where: { id: jam.id },
+        data: { hostLastSeenAt: now },
+      });
+      return { state: null, changed: false };
+    }
+
+    // The Host just came back online: `hostOnline` flips, so this is a real
+    // state transition. Version it and signal the gateway to broadcast.
+    jam.hostLastSeenAt = now;
+    jam.stateVersion += 1;
     await this.prisma.jamSession.update({
       where: { id: jam.id },
-      data: { hostLastSeenAt: new Date(now), stateVersion: { increment: 1 } },
+      data: { hostLastSeenAt: now, stateVersion: { increment: 1 } },
     });
-    if (wasOnline) return { state: null, changed: false };
-    const fresh = await this.findActive(tripId);
-    return { state: fresh ? this.toState(fresh) : null, changed: true };
+    return { state: this.toState(jam), changed: true };
   }
 
   /**
@@ -279,25 +307,29 @@ export class JamService {
    * participant keeps drifting. Returns true (and broadcasts `jam:state`) when
    * an active Jam owned by the user exists.
    */
-  async markHostDisconnected(
-    tripId: string,
-    userId: string,
-  ): Promise<boolean> {
+  async markHostDisconnected(tripId: string, userId: string): Promise<boolean> {
     const jam = await this.findActive(tripId);
     if (!jam || jam.hostUserId !== userId) return false;
     const now = new Date();
+    // Capture the expected (drifting) position while the host is still flagged
+    // as playing, then freeze it — the host is gone, so nobody should advance.
+    const position = expectedPosition(jam, now);
+    jam.hostLastSeenAt = new Date(0);
+    jam.isPlaying = false;
+    jam.position = position;
+    jam.positionAt = now;
+    jam.stateVersion += 1;
     await this.prisma.jamSession.update({
       where: { id: jam.id },
       data: {
         hostLastSeenAt: new Date(0),
         isPlaying: false,
-        position: expectedPosition(jam, now),
+        position,
         positionAt: now,
         stateVersion: { increment: 1 },
       },
     });
-    const fresh = await this.findActive(tripId);
-    if (fresh) this.realtime.broadcastJamState(tripId, this.toState(fresh));
+    this.realtime.broadcastJamState(tripId, this.toState(jam));
     return true;
   }
 
@@ -321,8 +353,9 @@ export class JamService {
     });
     if (!existing) return;
     await this.prisma.jamParticipant.delete({ where: { id: existing.id } });
-    const fresh = await this.findActive(tripId);
-    if (fresh) this.realtime.broadcastJamState(tripId, this.toState(fresh));
+    // Reflect the removal on the row we already hold — no re-fetch needed.
+    jam.participants = jam.participants.filter((p) => p.user.id !== userId);
+    this.realtime.broadcastJamState(tripId, this.toState(jam));
   }
 
   // ------------------------------------------------------------- internals
@@ -338,14 +371,20 @@ export class JamService {
       case 'play': {
         return {
           isPlaying: true,
-          position: clampPosition(input.position ?? expectedPosition(jam, now), duration),
+          position: clampPosition(
+            input.position ?? expectedPosition(jam, now),
+            duration,
+          ),
           positionAt: now,
         };
       }
       case 'pause': {
         return {
           isPlaying: false,
-          position: clampPosition(input.position ?? expectedPosition(jam, now), duration),
+          position: clampPosition(
+            input.position ?? expectedPosition(jam, now),
+            duration,
+          ),
           positionAt: now,
         };
       }
@@ -413,7 +452,7 @@ export class JamService {
     if (!link) {
       throw new ApiException(
         HttpStatus.BAD_REQUEST,
-        'That song is not in this trip\'s music library.',
+        "That song is not in this trip's music library.",
         ErrorCodes.JAM_SONG_NOT_IN_TRIP,
       );
     }
@@ -421,15 +460,36 @@ export class JamService {
 
   /** Next song in library order (oldest-added first), wrapping at the end. */
   private async nextSongFor(jam: JamRow): Promise<string | null> {
-    const songs = await this.prisma.tripSong.findMany({
-      where: { tripId: jam.tripId },
-      orderBy: { createdAt: 'asc' },
+    const byCreatedAt = { createdAt: 'asc' } as const;
+
+    const firstSong = async (): Promise<string | null> => {
+      const first = await this.prisma.tripSong.findFirst({
+        where: { tripId: jam.tripId },
+        orderBy: byCreatedAt,
+        select: { songId: true },
+      });
+      return first?.songId ?? null;
+    };
+
+    if (!jam.currentSongId) return firstSong();
+
+    // The current song's library link pins the position we advance from. This
+    // avoids pulling every tripSong row just to find the next one.
+    const current = await this.prisma.tripSong.findFirst({
+      where: { tripId: jam.tripId, songId: jam.currentSongId },
+      select: { createdAt: true },
+    });
+    if (!current) return firstSong();
+
+    const next = await this.prisma.tripSong.findFirst({
+      where: { tripId: jam.tripId, createdAt: { gt: current.createdAt } },
+      orderBy: byCreatedAt,
       select: { songId: true },
     });
-    if (songs.length === 0) return null;
-    if (!jam.currentSongId) return songs[0].songId;
-    const index = songs.findIndex((s) => s.songId === jam.currentSongId);
-    return songs[(index + 1) % songs.length].songId;
+    if (next) return next.songId;
+
+    // Wrapped past the last song — start again from the oldest-added one.
+    return firstSong();
   }
 
   private async findActive(tripId: string): Promise<JamRow | null> {

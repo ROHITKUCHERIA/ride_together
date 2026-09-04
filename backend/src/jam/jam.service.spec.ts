@@ -13,6 +13,7 @@ function makeMocks() {
     jamParticipant: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      upsert: jest.fn(),
       delete: jest.fn(),
       deleteMany: jest.fn(),
     },
@@ -74,9 +75,17 @@ describe('JamService', () => {
   describe('create', () => {
     it('requires trip membership', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockRejectedValue(
-        new ApiException(404, 'Trip not found or you are not a member.', ErrorCodes.TRIP_NOT_FOUND),
+        new ApiException(
+          404,
+          'Trip not found or you are not a member.',
+          ErrorCodes.TRIP_NOT_FOUND,
+        ),
       );
 
       await expect(svc.create('trip-1', 'user-1')).rejects.toMatchObject({
@@ -87,10 +96,16 @@ describe('JamService', () => {
 
     it('creates the Jam with the caller as Host and first participant, then broadcasts', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findFirst.mockResolvedValue(null);
-      prisma.jamSession.create.mockResolvedValue(makeJamRow({ id: 'jam-new', hostUserId: 'user-host' }));
+      prisma.jamSession.create.mockResolvedValue(
+        makeJamRow({ id: 'jam-new', hostUserId: 'user-host' }),
+      );
 
       const state = await svc.create('trip-1', 'user-host');
 
@@ -103,7 +118,11 @@ describe('JamService', () => {
           }),
         }),
       );
-      expect(state).toMatchObject({ jamId: 'jam-new', hostId: 'user-host', hostName: 'Rohit' });
+      expect(state).toMatchObject({
+        jamId: 'jam-new',
+        hostId: 'user-host',
+        hostName: 'Rohit',
+      });
       expect(realtime.broadcastJamState).toHaveBeenCalledWith(
         'trip-1',
         expect.objectContaining({ jamId: 'jam-new' }),
@@ -112,7 +131,11 @@ describe('JamService', () => {
 
     it('returns the existing active Jam instead of creating a duplicate', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findFirst.mockResolvedValue(makeJamRow());
 
@@ -123,7 +146,11 @@ describe('JamService', () => {
 
     it('recovers from a concurrent-create unique violation by returning the winner', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findFirst.mockResolvedValueOnce(null);
       const dup = Object.assign(new Error('dup'), { code: 'P2002' });
@@ -138,19 +165,31 @@ describe('JamService', () => {
   describe('findActiveForTrip', () => {
     it('returns null when there is no active Jam', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findFirst.mockResolvedValue(null);
 
-      await expect(svc.findActiveForTrip('trip-1', 'user-1')).resolves.toBeNull();
+      await expect(
+        svc.findActiveForTrip('trip-1', 'user-1'),
+      ).resolves.toBeNull();
     });
   });
 
   describe('join', () => {
     it('rejects joining an ended Jam', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
-      prisma.jamSession.findUnique.mockResolvedValue(makeJamRow({ status: 'DELETED' }));
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
+      prisma.jamSession.findUnique.mockResolvedValue(
+        makeJamRow({ status: 'DELETED' }),
+      );
 
       await expect(svc.join('jam-1', 'user-2')).rejects.toMatchObject({
         status: 409,
@@ -161,51 +200,100 @@ describe('JamService', () => {
 
     it('requires trip membership before joining', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
       access.requireMember.mockRejectedValue(
-        new ApiException(404, 'Trip not found or you are not a member.', ErrorCodes.TRIP_NOT_FOUND),
+        new ApiException(
+          404,
+          'Trip not found or you are not a member.',
+          ErrorCodes.TRIP_NOT_FOUND,
+        ),
       );
 
-      await expect(svc.join('jam-1', 'outsider')).rejects.toMatchObject({ status: 404 });
+      await expect(svc.join('jam-1', 'outsider')).rejects.toMatchObject({
+        status: 404,
+      });
       expect(prisma.jamParticipant.create).not.toHaveBeenCalled();
     });
 
     it('adds the caller as a participant and broadcasts the fresh state', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findUnique
         .mockResolvedValueOnce(makeJamRow())
         .mockResolvedValueOnce(makeJamRow({ stateVersion: 4 }));
-      prisma.jamParticipant.findUnique.mockResolvedValue(null);
+      prisma.jamParticipant.upsert.mockResolvedValue({
+        id: 'p-2',
+        jamSessionId: 'jam-1',
+        userId: 'user-2',
+      });
 
       const state = await svc.join('jam-1', 'user-2');
-      expect(prisma.jamParticipant.create).toHaveBeenCalledWith({
-        data: { jamSessionId: 'jam-1', userId: 'user-2' },
+      expect(prisma.jamParticipant.upsert).toHaveBeenCalledWith({
+        where: {
+          jamSessionId_userId: { jamSessionId: 'jam-1', userId: 'user-2' },
+        },
+        update: { lastSeenAt: expect.any(Date) },
+        create: { jamSessionId: 'jam-1', userId: 'user-2' },
       });
       expect(state.stateVersion).toBe(4);
-      expect(realtime.broadcastJamState).toHaveBeenCalledWith('trip-1', expect.anything());
+      expect(realtime.broadcastJamState).toHaveBeenCalledWith(
+        'trip-1',
+        expect.anything(),
+      );
     });
 
-    it('is a no-op (returns state) when the user already joined', async () => {
+    it('is a no-op (state only, no broadcast) when the user already joined', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
-      prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
-      prisma.jamParticipant.findUnique.mockResolvedValue({ id: 'p-1' });
+      prisma.jamSession.findUnique.mockResolvedValue(
+        makeJamRow({
+          participants: [
+            {
+              joinedAt: new Date(NOW),
+              user: { id: 'user-host', name: 'Rohit', avatarUrl: null },
+            },
+            {
+              joinedAt: new Date(NOW),
+              user: { id: 'user-2', name: 'Sam', avatarUrl: null },
+            },
+          ],
+        }),
+      );
 
-      await svc.join('jam-1', 'user-2');
-      expect(prisma.jamParticipant.create).not.toHaveBeenCalled();
+      const state = await svc.join('jam-1', 'user-2');
+      expect(prisma.jamParticipant.upsert).not.toHaveBeenCalled();
+      expect(realtime.broadcastJamState).not.toHaveBeenCalled();
+      expect(state.jamId).toBe('jam-1');
     });
   });
 
   describe('leave', () => {
     it('blocks the host from leaving', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
-      prisma.jamSession.findUnique.mockResolvedValue(makeJamRow({ hostUserId: 'user-host' }));
+      prisma.jamSession.findUnique.mockResolvedValue(
+        makeJamRow({ hostUserId: 'user-host' }),
+      );
 
       await expect(svc.leave('jam-1', 'user-host')).rejects.toMatchObject({
         status: 400,
@@ -216,11 +304,16 @@ describe('JamService', () => {
 
     it('removes a participant and broadcasts', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findUnique
         .mockResolvedValueOnce(makeJamRow())
         .mockResolvedValueOnce(makeJamRow({ stateVersion: 5 }));
+      prisma.jamParticipant.deleteMany.mockResolvedValue({ count: 1 });
 
       const state = await svc.leave('jam-1', 'user-2');
       expect(prisma.jamParticipant.deleteMany).toHaveBeenCalledWith({
@@ -229,12 +322,32 @@ describe('JamService', () => {
       expect(realtime.broadcastJamState).toHaveBeenCalled();
       expect(state.stateVersion).toBe(5);
     });
+
+    it('does not broadcast when the user was not a participant', async () => {
+      const { prisma, access, realtime } = makeMocks();
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
+      access.requireMember.mockResolvedValue({ role: 'MEMBER' });
+      prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
+      prisma.jamParticipant.deleteMany.mockResolvedValue({ count: 0 });
+
+      const state = await svc.leave('jam-1', 'user-2');
+      expect(realtime.broadcastJamState).not.toHaveBeenCalled();
+      expect(state.stateVersion).toBe(3);
+    });
   });
 
   describe('deleteJam', () => {
     it('only the host can delete the Jam', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
 
@@ -247,7 +360,11 @@ describe('JamService', () => {
 
     it('marks the Jam deleted, removes participants and broadcasts jam:deleted', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
 
@@ -259,7 +376,10 @@ describe('JamService', () => {
       expect(prisma.jamSession.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'jam-1' },
-          data: expect.objectContaining({ status: 'DELETED', isPlaying: false }),
+          data: expect.objectContaining({
+            status: 'DELETED',
+            isPlaying: false,
+          }),
         }),
       );
       expect(realtime.broadcastJamDeleted).toHaveBeenCalledWith('trip-1', {
@@ -273,20 +393,33 @@ describe('JamService', () => {
   describe('control', () => {
     it('rejects non-hosts', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
 
       await expect(
         svc.control('jam-1', 'user-2', { action: 'play' }),
-      ).rejects.toMatchObject({ status: 403, errorCode: ErrorCodes.JAM_NOT_HOST });
+      ).rejects.toMatchObject({
+        status: 403,
+        errorCode: ErrorCodes.JAM_NOT_HOST,
+      });
       expect(prisma.jamSession.update).not.toHaveBeenCalled();
     });
 
     it('rejects control on an ended Jam', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
-      prisma.jamSession.findUnique.mockResolvedValue(makeJamRow({ status: 'DELETED' }));
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
+      prisma.jamSession.findUnique.mockResolvedValue(
+        makeJamRow({ status: 'DELETED' }),
+      );
 
       await expect(
         svc.control('jam-1', 'user-host', { action: 'play' }),
@@ -295,12 +428,21 @@ describe('JamService', () => {
 
     it('play sets isPlaying and bumps the state version', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
-      prisma.jamSession.update.mockResolvedValue(makeJamRow({ stateVersion: 4, isPlaying: true }));
+      prisma.jamSession.update.mockResolvedValue(
+        makeJamRow({ stateVersion: 4, isPlaying: true }),
+      );
 
-      const state = await svc.control('jam-1', 'user-host', { action: 'play', position: 42 });
+      const state = await svc.control('jam-1', 'user-host', {
+        action: 'play',
+        position: 42,
+      });
 
       expect(prisma.jamSession.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -313,16 +455,27 @@ describe('JamService', () => {
       );
       expect(state.isPlaying).toBe(true);
       expect(state.stateVersion).toBe(4);
-      expect(realtime.broadcastJamState).toHaveBeenCalledWith('trip-1', expect.anything());
+      expect(realtime.broadcastJamState).toHaveBeenCalledWith(
+        'trip-1',
+        expect.anything(),
+      );
     });
 
     it('pause derives the expected position from the stored playback state', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       // Playing, positionAt was ~10s ago → expected position is 12 + 10 ≈ 22.
-      prisma.jamSession.findUnique.mockResolvedValue(makeJamRow({ isPlaying: true }));
-      prisma.jamSession.update.mockResolvedValue(makeJamRow({ isPlaying: false, position: 22 }));
+      prisma.jamSession.findUnique.mockResolvedValue(
+        makeJamRow({ isPlaying: true }),
+      );
+      prisma.jamSession.update.mockResolvedValue(
+        makeJamRow({ isPlaying: false, position: 22 }),
+      );
 
       await svc.control('jam-1', 'user-host', { action: 'pause' });
 
@@ -335,12 +488,19 @@ describe('JamService', () => {
 
     it('seek clamps the position to the song duration', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
       prisma.jamSession.update.mockResolvedValue(makeJamRow({ position: 200 }));
 
-      await svc.control('jam-1', 'user-host', { action: 'seek', position: 9999 });
+      await svc.control('jam-1', 'user-host', {
+        action: 'seek',
+        position: 9999,
+      });
 
       expect(prisma.jamSession.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -351,22 +511,39 @@ describe('JamService', () => {
 
     it('song_changed requires the song to be in the trip library', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
       prisma.tripSong.findFirst.mockResolvedValue(null);
 
       await expect(
-        svc.control('jam-1', 'user-host', { action: 'song_changed', songId: 'song-9' }),
-      ).rejects.toMatchObject({ status: 400, errorCode: ErrorCodes.JAM_SONG_NOT_IN_TRIP });
+        svc.control('jam-1', 'user-host', {
+          action: 'song_changed',
+          songId: 'song-9',
+        }),
+      ).rejects.toMatchObject({
+        status: 400,
+        errorCode: ErrorCodes.JAM_SONG_NOT_IN_TRIP,
+      });
     });
 
     it('song_changed is atomic: new song, position 0, fresh timestamp, version bump', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
-      prisma.tripSong.findFirst.mockResolvedValue({ id: 'link', songId: 'song-2' });
+      prisma.tripSong.findFirst.mockResolvedValue({
+        id: 'link',
+        songId: 'song-2',
+      });
       const next = makeJamRow({
         currentSongId: 'song-2',
         currentSong: {
@@ -402,16 +579,19 @@ describe('JamService', () => {
       expect(state.currentSong?.songId).toBe('song-2');
     });
 
-    it('next advances through the trip library in order (with wrap)', async () => {
+    it('next advances through the trip library in order', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
-      prisma.tripSong.findMany.mockResolvedValue([
-        { songId: 'song-1' },
-        { songId: 'song-2' },
-        { songId: 'song-3' },
-      ]);
+      // Current song's library link, then the next song after it.
+      prisma.tripSong.findFirst
+        .mockResolvedValueOnce({ createdAt: new Date(NOW) })
+        .mockResolvedValueOnce({ songId: 'song-2' });
       prisma.jamSession.update.mockResolvedValue(
         makeJamRow({ currentSongId: 'song-2', position: 0 }),
       );
@@ -420,7 +600,69 @@ describe('JamService', () => {
 
       expect(prisma.jamSession.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ currentSongId: 'song-2', position: 0 }),
+          data: expect.objectContaining({
+            currentSongId: 'song-2',
+            position: 0,
+          }),
+        }),
+      );
+    });
+
+    it('next wraps back to the first song when the current song is last', async () => {
+      const { prisma, access, realtime } = makeMocks();
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
+      access.requireMember.mockResolvedValue({ role: 'MEMBER' });
+      prisma.jamSession.findUnique.mockResolvedValue(
+        makeJamRow({ currentSongId: 'song-3' }),
+      );
+      prisma.tripSong.findFirst
+        .mockResolvedValueOnce({ createdAt: new Date(NOW) })
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ songId: 'song-1' });
+      prisma.jamSession.update.mockResolvedValue(
+        makeJamRow({ currentSongId: 'song-1', position: 0 }),
+      );
+
+      await svc.control('jam-1', 'user-host', { action: 'next' });
+
+      expect(prisma.jamSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            currentSongId: 'song-1',
+            position: 0,
+          }),
+        }),
+      );
+    });
+
+    it('next starts from the first song when nothing is playing', async () => {
+      const { prisma, access, realtime } = makeMocks();
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
+      access.requireMember.mockResolvedValue({ role: 'MEMBER' });
+      prisma.jamSession.findUnique.mockResolvedValue(
+        makeJamRow({ currentSongId: null }),
+      );
+      prisma.tripSong.findFirst.mockResolvedValueOnce({ songId: 'song-1' });
+      prisma.jamSession.update.mockResolvedValue(
+        makeJamRow({ currentSongId: 'song-1', position: 0 }),
+      );
+
+      await svc.control('jam-1', 'user-host', { action: 'next' });
+
+      expect(prisma.jamSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            currentSongId: 'song-1',
+            position: 0,
+          }),
         }),
       );
     });
@@ -429,8 +671,14 @@ describe('JamService', () => {
   describe('host presence', () => {
     it('heartbeat from a non-host is ignored', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
-      prisma.jamSession.findFirst.mockResolvedValue(makeJamRow({ hostUserId: 'user-host' }));
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
+      prisma.jamSession.findFirst.mockResolvedValue(
+        makeJamRow({ hostUserId: 'user-host' }),
+      );
 
       const result = await svc.heartbeat('trip-1', 'user-2');
       expect(result).toEqual({ state: null, changed: false });
@@ -439,32 +687,71 @@ describe('JamService', () => {
 
     it('host returning online triggers a changed broadcast state', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
-      // First lookup: lastSeen far in the past → host was offline. After the
-      // heartbeat updates lastSeen, the second lookup shows the host online.
-      prisma.jamSession.findFirst
-        .mockResolvedValueOnce(
-          makeJamRow({ hostLastSeenAt: new Date(NOW - HOST_OFFLINE_THRESHOLD_MS - 5_000) }),
-        )
-        .mockResolvedValue(makeJamRow({ hostLastSeenAt: new Date(NOW) }));
-      prisma.jamSession.update.mockResolvedValue(makeJamRow({ hostLastSeenAt: new Date(NOW) }));
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
+      // Last heartbeat is older than the offline threshold → host was offline.
+      prisma.jamSession.findFirst.mockResolvedValue(
+        makeJamRow({
+          hostLastSeenAt: new Date(NOW - HOST_OFFLINE_THRESHOLD_MS - 5_000),
+        }),
+      );
+      prisma.jamSession.update.mockResolvedValue(
+        makeJamRow({ hostLastSeenAt: new Date(NOW) }),
+      );
 
       const result = await svc.heartbeat('trip-1', 'user-host');
       expect(result.changed).toBe(true);
-      expect(result.state).toBeTruthy();
+      expect(result.state?.hostOnline).toBe(true);
+      expect(prisma.jamSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ stateVersion: { increment: 1 } }),
+        }),
+      );
     });
 
-    it('markHostDisconnected broadcasts hostOffline=false for the host only', async () => {
+    it('silent heartbeat while the host is online does not bump stateVersion', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
-      prisma.jamSession.findFirst
-        .mockResolvedValueOnce(makeJamRow())
-        .mockResolvedValueOnce(makeJamRow({ hostLastSeenAt: new Date(0) }));
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
+      prisma.jamSession.findFirst.mockResolvedValue(
+        makeJamRow({ hostLastSeenAt: new Date(NOW - 1_000) }),
+      );
+
+      const result = await svc.heartbeat('trip-1', 'user-host');
+      expect(result).toEqual({ state: null, changed: false });
+      expect(prisma.jamSession.update).toHaveBeenCalledTimes(1);
+      const data = (
+        prisma.jamSession.update.mock.calls[0][0] as {
+          data: Record<string, unknown>;
+        }
+      ).data;
+      expect(data.stateVersion).toBeUndefined();
+    });
+
+    it('markHostDisconnected broadcasts hostOnline=false for the host only', async () => {
+      const { prisma, access, realtime } = makeMocks();
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
+      prisma.jamSession.findFirst.mockResolvedValue(makeJamRow());
 
       const changed = await svc.markHostDisconnected('trip-1', 'user-host');
       expect(changed).toBe(true);
       expect(prisma.jamSession.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ hostLastSeenAt: new Date(0) }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({
+            hostLastSeenAt: new Date(0),
+            isPlaying: false,
+          }),
+        }),
       );
       expect(realtime.broadcastJamState).toHaveBeenCalledWith(
         'trip-1',
@@ -474,10 +761,18 @@ describe('JamService', () => {
 
     it('markHostDisconnected is a no-op when the user is not a host', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
-      prisma.jamSession.findFirst.mockResolvedValue(makeJamRow({ hostUserId: 'other' }));
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
+      prisma.jamSession.findFirst.mockResolvedValue(
+        makeJamRow({ hostUserId: 'other' }),
+      );
 
-      await expect(svc.markHostDisconnected('trip-1', 'user-2')).resolves.toBe(false);
+      await expect(svc.markHostDisconnected('trip-1', 'user-2')).resolves.toBe(
+        false,
+      );
       expect(prisma.jamSession.update).not.toHaveBeenCalled();
     });
   });
@@ -485,10 +780,12 @@ describe('JamService', () => {
   describe('disconnect cleanup', () => {
     it('removes a disconnected participant and broadcasts the fresh state', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
-      prisma.jamSession.findFirst
-        .mockResolvedValueOnce(makeJamRow())
-        .mockResolvedValueOnce(makeJamRow({ stateVersion: 6 }));
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
+      prisma.jamSession.findFirst.mockResolvedValue(makeJamRow());
       prisma.jamParticipant.findUnique.mockResolvedValue({ id: 'p-2' });
 
       await svc.removeParticipantOnDisconnect('trip-1', 'user-2');
@@ -498,14 +795,20 @@ describe('JamService', () => {
       });
       expect(realtime.broadcastJamState).toHaveBeenCalledWith(
         'trip-1',
-        expect.objectContaining({ stateVersion: 6 }),
+        expect.objectContaining({ jamId: 'jam-1' }),
       );
     });
 
     it('does nothing for the host (handled by markHostDisconnected)', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
-      prisma.jamSession.findFirst.mockResolvedValue(makeJamRow({ hostUserId: 'user-host' }));
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
+      prisma.jamSession.findFirst.mockResolvedValue(
+        makeJamRow({ hostUserId: 'user-host' }),
+      );
 
       await svc.removeParticipantOnDisconnect('trip-1', 'user-host');
       expect(prisma.jamParticipant.findUnique).not.toHaveBeenCalled();
@@ -514,7 +817,11 @@ describe('JamService', () => {
 
     it('does nothing when the user is not in the Jam', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       prisma.jamSession.findFirst.mockResolvedValue(makeJamRow());
       prisma.jamParticipant.findUnique.mockResolvedValue(null);
 
@@ -527,18 +834,32 @@ describe('JamService', () => {
   describe('getState', () => {
     it('requires membership of the jam trip', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
       access.requireMember.mockRejectedValue(
-        new ApiException(403, 'You do not have permission.', ErrorCodes.TRIP_PERMISSION_DENIED),
+        new ApiException(
+          403,
+          'You do not have permission.',
+          ErrorCodes.TRIP_PERMISSION_DENIED,
+        ),
       );
 
-      await expect(svc.getState('jam-1', 'outsider')).rejects.toMatchObject({ status: 403 });
+      await expect(svc.getState('jam-1', 'outsider')).rejects.toMatchObject({
+        status: 403,
+      });
     });
 
     it('returns a fully mapped state', async () => {
       const { prisma, access, realtime } = makeMocks();
-      const svc = new JamService(prisma as never, access as never, realtime as never);
+      const svc = new JamService(
+        prisma as never,
+        access as never,
+        realtime as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
       prisma.jamSession.findUnique.mockResolvedValue(makeJamRow());
 
