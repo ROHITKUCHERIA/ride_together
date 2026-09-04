@@ -98,7 +98,7 @@ export default function Profile() {
         ) : (
           <form onSubmit={handleSave} className="mt-8 flex flex-col gap-5" noValidate>
             <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <Avatar name={name || '?'} accent="#ff6b2c" size={56} />
+              <Avatar name={name || '?'} accent="#4a9eff" size={56} />
               <div className="min-w-0">
                 <p className="font-display text-base font-semibold text-bone">{name || 'Your name'}</p>
                 <p className="truncate text-xs text-mist/70">{email}</p>

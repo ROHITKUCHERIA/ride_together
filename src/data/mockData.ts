@@ -26,7 +26,7 @@ const riders: Rider[] = [
     lat: 16.62,
     lng: 74.42,
     isMe: true,
-    accent: '#ff6b2c',
+    accent: '#4a9eff',
   },
   {
     id: 'r2',

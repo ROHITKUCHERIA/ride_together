@@ -55,7 +55,7 @@ export default function Modal({ open, onClose, title, eyebrow, children }: Modal
             onClick={onClose}
           />
           <motion.div
-            className={`fixed flex flex-col overflow-hidden border-white/10 bg-charcoal/95 backdrop-blur-2xl ${
+            className={`fixed flex flex-col overflow-hidden rt-glass ${
               isMobile
                 ? 'inset-x-0 bottom-0 max-h-[92dvh] rounded-t-3xl border-t'
                 : 'left-1/2 top-1/2 w-[min(92vw,520px)] max-h-[90dvh] -translate-x-1/2 -translate-y-1/2 rounded-2xl border'
