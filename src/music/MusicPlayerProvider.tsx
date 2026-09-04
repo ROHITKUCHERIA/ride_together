@@ -191,7 +191,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
             rel: 0,
             controls: 0,
             disablekb: 1,
-            origin: window.location.origin,
+            // In the iOS wrapper the page runs from capacitor://localhost — a
+            // non-http origin YouTube's iframe handshake rejects. Only send the
+            // origin when it is genuinely an http(s) web origin.
+            ...(window.location.protocol.startsWith('http') ? { origin: window.location.origin } : {}),
           },
           events: {
             onReady: () => {
