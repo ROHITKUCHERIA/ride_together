@@ -2,6 +2,7 @@ import type { GpsError, LocationUpdate } from '../types'
 import { gpsStore } from '../state/gpsStore'
 import { riderStore } from '../state/riderStore'
 import { connectionStore } from '../state/connectionStore'
+import { groupNavStore } from '../../navigation/state/groupNavStore'
 import type { RealtimeService } from './RealtimeService'
 import { MockRealtimeService } from './MockRealtimeService'
 import { SocketRealtimeService } from './SocketRealtimeService'
@@ -14,6 +15,10 @@ import { trip } from '../../../data/mockData'
  * the demo route (unless VITE_USE_REALTIME_BACKEND=true opts the demo into the
  * backend too). Identity never comes from inbound payloads — it is stamped by
  * the trusted backend context (mock mode stamps trusted demo ids).
+ *
+ * Group navigation mirrors ride the SAME connection: destination and per-rider
+ * session broadcasts land directly in `groupNavStore`, so every feature on the
+ * map (ETA strip, rider badges) reads the store, never the socket.
  */
 class RideController {
   private realtime: RealtimeService | null = null
@@ -36,6 +41,12 @@ class RideController {
     this.realtime.onRiderLocations((riders) => {
       riderStore.setRiders(riders)
       gpsStore.setAccuracy(riders.find((r) => r.isMe)?.accuracy ?? null)
+    })
+    this.realtime.onGroupNavEvent((event, payload) => {
+      groupNavStore.applyNavEvent(event, payload)
+    })
+    this.realtime.onTripDestination((payload) => {
+      groupNavStore.applyDestination(payload.tripId, payload.destination)
     })
 
     this.realtime.connect(tripId)
@@ -100,6 +111,7 @@ class RideController {
     this.realtime = null
     this.activeTripId = null
     riderStore.clear()
+    groupNavStore.reset()
     connectionStore.set('connected')
     gpsStore.setMode('inactive')
   }

@@ -177,7 +177,9 @@ export class YouTubeService {
     return {
       items,
       nextPageToken:
-        typeof nextPageToken === 'string' && nextPageToken ? nextPageToken : null,
+        typeof nextPageToken === 'string' && nextPageToken
+          ? nextPageToken
+          : null,
     };
   }
 
@@ -213,7 +215,10 @@ export class YouTubeService {
           ErrorCodes.YOUTUBE_API_ERROR,
         );
       }
-      throw this.providerError(operation, 'YouTube could not complete that request.');
+      throw this.providerError(
+        operation,
+        'YouTube could not complete that request.',
+      );
     }
 
     return json;

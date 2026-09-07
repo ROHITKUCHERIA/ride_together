@@ -166,6 +166,12 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const quiet = options.quiet === true
   if (!quiet) startRequest()
+  // Snapshot the session this request belongs to. If a newer login stored
+  // fresh tokens while this (stale) request was in flight, the expiry handler
+  // must not wipe them — that race is exactly "first login fails, second
+  // succeeds": a dying restore flow erasing a just-issued session.
+  const accessBefore = getAccessToken()
+  const refreshBefore = getRefreshToken()
   try {
     const retry = options.retryOnAuth !== false
     try {
@@ -180,7 +186,9 @@ export async function apiRequest<T>(
         if (refreshed) {
           return doRequest<T>(path, { ...options, retryOnAuth: false })
         }
-        await notifyExpired()
+        if (getAccessToken() === accessBefore && getRefreshToken() === refreshBefore) {
+          await notifyExpired()
+        }
         throw new ApiError(401, 'UNAUTHENTICATED', 'Your session has expired. Please sign in again.')
       }
       throw err

@@ -19,6 +19,8 @@ import type { LocationUpdateInput } from './location-update';
 import { computeRiderStatus, RiderStatus } from './rider-status';
 import { JamService } from '../jam/jam.service';
 import { JamRealtimeService } from './jam-realtime.service';
+import { GroupNavRealtimeService } from './group-nav-realtime.service';
+import { NavigationSessionsService } from './navigation-sessions.service';
 import { tripRoomName } from './rooms';
 import type { AuthenticatedUser } from '../auth/types/auth.types';
 
@@ -57,11 +59,15 @@ export class RealtimeGateway
     private readonly config: AppConfig,
     private readonly jam: JamService,
     private readonly jamRealtime: JamRealtimeService,
+    private readonly groupNavRealtime: GroupNavRealtimeService,
+    private readonly navigationSessions: NavigationSessionsService,
   ) {}
 
   afterInit(): void {
     // REST-originated Jam mutations broadcast through the shared server.
     this.jamRealtime.attach(this.server);
+    // REST-originated destination/session mutations broadcast to the room.
+    this.groupNavRealtime.attach(this.server);
     this.statusTicker = setInterval(
       () => this.sweepStatuses(),
       STATUS_SWEEP_INTERVAL_MS,
@@ -98,6 +104,9 @@ export class RealtimeGateway
           // a disconnected participant leaves the Jam so counts stay accurate.
           void this.jam.markHostDisconnected(tripId, userId);
           void this.jam.removeParticipantOnDisconnect(tripId, userId);
+          // A navigating rider that vanishes is immediately marked OFFLINE so
+          // the group status/ETA stay accurate across the disconnect.
+          void this.navigationSessions.markOffline(tripId, userId);
         }
       }
     }

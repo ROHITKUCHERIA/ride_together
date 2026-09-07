@@ -44,7 +44,7 @@ describe('parseIsoDuration', () => {
 
 describe('YouTubeService', () => {
   beforeEach(() => {
-    global.fetch = jest.fn() as unknown as typeof fetch;
+    global.fetch = jest.fn();
   });
 
   afterEach(() => {
@@ -104,7 +104,9 @@ describe('YouTubeService', () => {
               channelTitle: 'Rick Astley',
               publishedAt: '2009-10-25T06:57:33Z',
               thumbnails: {
-                medium: { url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg' },
+                medium: {
+                  url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
+                },
               },
             },
           },
@@ -145,7 +147,7 @@ describe('YouTubeService', () => {
       const fetchMock = jest.fn().mockResolvedValue(searchResponse([]));
       global.fetch = fetchMock;
       const svc = makeService({ youtubeSearchCacheTtlMs: 1000 });
-      let now = 1_000_000;
+      const now = 1_000_000;
       await svc.searchVideos('road trip songs', undefined, now);
       await svc.searchVideos('road trip songs', undefined, now + 500);
       expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -154,7 +156,9 @@ describe('YouTubeService', () => {
     });
 
     it('maps quota exhaustion to YOUTUBE_API_ERROR', async () => {
-      global.fetch = jest.fn().mockResolvedValue(errorResponse(403, 'quotaExceeded'));
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(errorResponse(403, 'quotaExceeded'));
       const svc = makeService();
       await expect(svc.searchVideos('arijit singh')).rejects.toMatchObject({
         status: 503,
@@ -194,7 +198,7 @@ describe('YouTubeService', () => {
             },
           ],
         }),
-      } as Response);
+      });
       const svc = makeService();
       const details = await svc.getVideoDetails('dQw4w9WgXcQ');
       expect(details).toMatchObject({
@@ -209,7 +213,10 @@ describe('YouTubeService', () => {
     });
 
     it('returns null when the video does not exist', async () => {
-      global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [] }) } as Response);
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ items: [] }),
+      });
       const svc = makeService();
       await expect(svc.getVideoDetails('dQw4w9WgXcQ')).resolves.toBeNull();
     });

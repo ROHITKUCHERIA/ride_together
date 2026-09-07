@@ -46,6 +46,8 @@ model User {
   addedPlaylistSongs PlaylistSong[] @relation("PlaylistSongAddedBy")
   hostedJams JamSession[] @relation("JamHosts")
   jamParticipants JamParticipant[] @relation("JamParticipantUsers")
+  tripsDestinationSet Trip[] @relation("TripDestinationSetter")
+  navigationSessions NavigationSession[]
 
   @@index([email])
   @@map("users")
@@ -66,6 +68,10 @@ model Trip {
   /// PostGIS geography point (SRID 4326) for the destination. Created by raw
   /// SQL in the `0000_enable_postgis` migration; Prisma treats it as opaque.
   destinationGeo           Unsupported("geography")? @map("destination_geo")
+  /// Who last set the shared trip destination (null when never set / cleared).
+  destinationSetBy         String?  @map("destination_set_by") @db.Uuid
+  /// When the shared destination was last set/updated (null when cleared).
+  destinationSetAt         DateTime? @map("destination_set_at") @db.Timestamptz(6)
   startDate               DateTime @map("start_date") @db.Timestamptz(6)
   endDate                 DateTime @map("end_date") @db.Timestamptz(6)
   status                  TripStatus @default(PLANNED)
@@ -75,16 +81,19 @@ model Trip {
   updatedAt               DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   creator     User          @relation("TripCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  destinationSetter User?   @relation("TripDestinationSetter", fields: [destinationSetBy], references: [id], onDelete: SetNull)
   members     TripMember[]
   currentLocations CurrentLocation[]
   tripSongs   TripSong[]
   playlists   Playlist[]
   jams        JamSession[]  @relation("JamTrips")
+  navigationSessions NavigationSession[]
 
   @@index([createdBy])
   @@index([status])
   @@index([startDate])
   @@index([inviteCode])
+  @@index([destinationSetBy])
   @@map("trips")
 }
 
@@ -117,6 +126,26 @@ enum MemberRole {
   OWNER
   ADMIN
   MEMBER
+}
+
+/// Which navigation context a session belongs to. Group sessions follow the
+/// trip's shared destination and are visible to every rider; personal sessions
+/// stay private to the rider (only used to restore their own state on reconnect).
+enum NavigationMode {
+  PERSONAL
+  GROUP
+}
+
+/// A rider's navigation state within a trip. `ARRIVED` / `GPS_LOST` / `OFFLINE`
+/// also drive the group status panel and group ETA derivation.
+enum NavigationStatus {
+  IDLE
+  NAVIGATING
+  OFF_ROUTE
+  REROUTING
+  ARRIVED
+  GPS_LOST
+  OFFLINE
 }
 
 /// Refresh-token session. Only a hash of the token is stored, never the raw
@@ -166,6 +195,39 @@ model CurrentLocation {
   @@index([userId])
   @@index([lastUpdatedAt])
   @@map("current_locations")
+}
+
+/// A rider's lightweight navigation session inside a trip. Stores only status
+/// transitions, NOT GPS history — the high-frequency signal stays in the
+/// socket layer. One row per (trip, user). Group sessions are broadcast to the
+/// room; personal sessions are kept only for reconnect recovery.
+model NavigationSession {
+  id                 String            @id @default(uuid()) @db.Uuid
+  tripId             String            @map("trip_id") @db.Uuid
+  userId             String            @map("user_id") @db.Uuid
+  mode               NavigationMode    @default(GROUP)
+  status             NavigationStatus  @default(NAVIGATING)
+  /// Destination snapshot at session start (avoids re-deriving on every read).
+  destinationLatitude  Float? @map("destination_latitude") @db.DoublePrecision
+  destinationLongitude Float? @map("destination_longitude") @db.DoublePrecision
+  destinationName      String? @map("destination_name")
+  /** Rider-reported remaining distance (m) on the last meaningful update. */
+  distanceRemainingMeters Float? @map("distance_remaining_meters") @db.DoublePrecision
+  /** Rider-reported projected arrival (epoch ms) on the last meaningful update. */
+  etaEpochMs           Float?  @map("eta_epoch_ms") @db.DoublePrecision
+  startedAt            DateTime @map("started_at") @db.Timestamptz(6)
+  lastUpdatedAt        DateTime @map("last_updated_at") @db.Timestamptz(6)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, userId])
+  @@index([tripId])
+  @@index([userId])
+  @@index([lastUpdatedAt])
+  @@map("navigation_sessions")
 }
 
 /// A YouTube video tracked as a song. Metadata is shared across every trip —

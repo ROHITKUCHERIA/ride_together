@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { io } from 'socket.io-client'
 import type { Socket } from 'socket.io-client'
 import type { LocationUpdate, RealtimeConnection, RiderLocation } from '../types'
+import type { NavigationSessionPayload } from '../../navigation/types'
 import { SocketRealtimeService } from './SocketRealtimeService'
 import { ensureAuthContext } from './backend'
 
@@ -208,5 +209,60 @@ describe('SocketRealtimeService', () => {
     sock.emit.mockClear()
     svc.publishLocation(update({}))
     expect(sock.emit).not.toHaveBeenCalled()
+  })
+
+  it('forwards destination broadcasts (set/update/clear) with tripId + destination', async () => {
+    vi.mocked(ensureAuthContext).mockResolvedValue(ctx)
+    const svc = new SocketRealtimeService({ tripId: 't1' })
+    const sock = makeFakeSocket()
+    vi.mocked(io).mockReturnValue(sock as unknown as Socket)
+    await svc.connect('t1')
+
+    const destinations: Array<{ tripId: string; destination: unknown }> = []
+    svc.onTripDestination((p) => destinations.push(p))
+
+    sock.fire('trip:destination-updated', {
+      tripId: 't1',
+      destination: { latitude: 15.49, longitude: 73.82, name: 'Goa' },
+    })
+    sock.fire('trip:destination-cleared', { tripId: 't1', destination: null })
+
+    expect(destinations[0]).toEqual({
+      tripId: 't1',
+      destination: { latitude: 15.49, longitude: 73.82, name: 'Goa' },
+    })
+    expect(destinations[1]).toEqual({ tripId: 't1', destination: null })
+  })
+
+  it('forwards every navigation:* broadcast with its event name', async () => {
+    vi.mocked(ensureAuthContext).mockResolvedValue(ctx)
+    const svc = new SocketRealtimeService({ tripId: 't1' })
+    const sock = makeFakeSocket()
+    vi.mocked(io).mockReturnValue(sock as unknown as Socket)
+    await svc.connect('t1')
+
+    const events: Array<{ event: string; payload: NavigationSessionPayload }> = []
+    svc.onGroupNavEvent((event, payload) => events.push({ event, payload }))
+
+    const payload: NavigationSessionPayload = {
+      tripId: 't1',
+      userId: 'u2',
+      mode: 'group',
+      status: 'off_route',
+      distanceRemainingMeters: 4200,
+      eta: Date.now() + 600_000,
+      updatedAt: new Date().toISOString(),
+    }
+    sock.fire('navigation:off_route-stale-impossible', payload) // unknown events are ignored
+    sock.fire('navigation:started', payload)
+    sock.fire('navigation:status', payload)
+    sock.fire('navigation:arrived', payload)
+
+    expect(events.map((e) => e.event)).toEqual([
+      'navigation:started',
+      'navigation:status',
+      'navigation:arrived',
+    ])
+    expect(events[0].payload.userId).toBe('u2')
   })
 })

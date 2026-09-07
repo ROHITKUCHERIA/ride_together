@@ -7,6 +7,9 @@ import { buildDestinationPin, buildOriginPin } from './markers'
 
 interface RouteLayerProps {
   route?: [number, number][] | null
+  /** While navigating, the nav layer owns the pins (single START/DEST) and the
+      blue dot sits on the origin — pins here would stack duplicates. */
+  hidePins?: boolean
 }
 
 const ARROW_SVG =
@@ -21,7 +24,7 @@ function arrowIcon(angle: number): L.DivIcon {
   })
 }
 
-export default function RouteLayer({ route }: RouteLayerProps) {
+export default function RouteLayer({ route, hidePins = false }: RouteLayerProps) {
   const isDemo = route === undefined
   const hasCoords = !!route && route.length >= 2
   const [road, setRoad] = useState<RoadRoute | null>(null)
@@ -68,8 +71,12 @@ export default function RouteLayer({ route }: RouteLayerProps) {
       {arrows.map((a, i) => (
         <Marker key={i} position={[a.lat, a.lng]} icon={arrowIcon(a.angle)} interactive={false} />
       ))}
-      <Marker position={start} icon={buildOriginPin(hasCoords ? 'START' : 'HYD')} interactive={false} />
-      <Marker position={end} icon={buildDestinationPin(hasCoords ? 'DEST' : 'GOA')} interactive={false} />
+      {!hidePins ? (
+        <>
+          <Marker position={start} icon={buildOriginPin(hasCoords ? 'START' : 'HYD')} interactive={false} />
+          <Marker position={end} icon={buildDestinationPin(hasCoords ? 'DEST' : 'GOA')} interactive={false} />
+        </>
+      ) : null}
     </>
   )
 }

@@ -15,14 +15,14 @@ export const DEFAULT_TILE_PROVIDERS: MapProvider[] = [
   {
     id: 'dark',
     label: 'Dark',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=cb1_301r_1_f6fdb309731a70f7b980fb6c',
     attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
     maxZoom: 19,
   },
   {
     id: 'light',
     label: 'Light',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_301r_1_f6fdb309731a70f7b980fb6c',
     attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
     maxZoom: 19,
   },

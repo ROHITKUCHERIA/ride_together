@@ -57,5 +57,33 @@ export const MOCK_RECONNECT_DURATION_MS = 3000
 export const FOLLOW_ANIMATION_MS = 800
 export const DEFAULT_MAP_CENTER: [number, number] = [15.9, 73.97]
 export const DEFAULT_MAP_ZOOM = 11
+/** Zoom rails: 19 = closest street-level detail (tile limit), 3 = continent view. */
+export const MAP_MIN_ZOOM = 3
+export const MAP_MAX_ZOOM = 19
 export const SINGLE_RIDER_ZOOM = 14
 export const FIT_GROUP_MAX_ZOOM = 22
+
+/**
+ * Google Maps-style navigation camera. The rider is anchored at a fraction of
+ * the map container (default lower-middle ~70% down) so the route ahead stays
+ * visible above the ride marker. The camera follows per GPS update with a small
+ * movement threshold — jitter is skipped, real movement is continuous.
+ */
+export const FOLLOW_CAMERA_OFFSET_X = num(import.meta.env.VITE_FOLLOW_CAMERA_OFFSET_X, 0.5)
+export const FOLLOW_CAMERA_OFFSET_Y = num(import.meta.env.VITE_NAV_FOLLOW_Y, 0.7)
+/** Skip a follow camera move when the rider moved less than this (m). */
+export const FOLLOW_MIN_MOVE_METERS = num(import.meta.env.VITE_FOLLOW_MIN_MOVE_METERS, 4)
+/** Skip a rotation-only follow update when the bearing changed less than this (deg). */
+export const FOLLOW_BEARING_MIN_STEP_DEG = num(import.meta.env.VITE_FOLLOW_BEARING_MIN_STEP_DEG, 2)
+
+/**
+ * Navigation camera tilt (Google Maps-style perspective). Leaflet has no native
+ * pitch, so the tilt is rendered by the isolated camera wrapper
+ * (`perspective(...) rotateX(pitch) rotate(bearing)`); Leaflet's own camera
+ * still owns center/zoom. Only applied in heading-up navigation mode.
+ */
+export const NAV_CAMERA_PITCH_DEG = num(import.meta.env.VITE_NAV_CAMERA_PITCH_DEG, 45)
+/** Camera distance for the perspective projection (px). Lower = more extreme. */
+export const NAV_CAMERA_PERSPECTIVE_PX = num(import.meta.env.VITE_NAV_CAMERA_PERSPECTIVE_PX, 2000)
+/** Zoom used when entering navigation (heading-up) mode. */
+export const NAVIGATION_ZOOM = num(import.meta.env.VITE_NAVIGATION_ZOOM, 17)

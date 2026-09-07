@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Marker } from 'react-leaflet'
 import type { Marker as LeafletMarker } from 'leaflet'
 import type { RiderLocation } from '../types'
-import { buildRiderIcon } from './markers'
+import { buildRiderIcon, riderInitial } from './markers'
 import { presenceFor } from '../hooks/useLiveMap'
 interface RiderMarkerProps {
   rider: RiderLocation
@@ -10,6 +10,8 @@ interface RiderMarkerProps {
   onSelect: (id: string) => void
   /** Optional visual offset (px) to fan bundled riders apart. */
   spread?: [number, number]
+  /** Group navigation status badge (off_route, arrived, gps_lost, …). */
+  navStatus?: string
 }
 
 /**
@@ -17,7 +19,7 @@ interface RiderMarkerProps {
  * teleporting. The Leaflet marker instance is created once and only
  * repositioned — never recreated per update.
  */
-export default function RiderMarker({ rider, selected, onSelect, spread }: RiderMarkerProps) {
+export default function RiderMarker({ rider, selected, onSelect, spread, navStatus }: RiderMarkerProps) {
   const markerRef = useRef<LeafletMarker | null>(null)
   const target = useRef({ lat: rider.latitude, lng: rider.longitude })
   const current = useRef({ lat: rider.latitude, lng: rider.longitude })
@@ -26,11 +28,23 @@ export default function RiderMarker({ rider, selected, onSelect, spread }: Rider
 
   const spreadRef = useRef(spread)
   spreadRef.current = spread
+  const navStatusRef = useRef(navStatus)
+  navStatusRef.current = navStatus
+
+  const initial = riderInitial(rider.name)
 
   useEffect(() => {
-    const icon = buildRiderIcon(rider.accent, rider.isMe ?? false, selected, presenceFor(rider.timestamp), spreadRef.current)
+    const icon = buildRiderIcon(
+      rider.accent,
+      rider.isMe ?? false,
+      selected,
+      presenceFor(rider.timestamp),
+      initial,
+      spreadRef.current,
+      navStatusRef.current,
+    )
     if (markerRef.current) markerRef.current.setIcon(icon)
-  }, [rider.accent, rider.isMe, rider.timestamp, selected, spread])
+  }, [rider.accent, rider.isMe, initial, rider.timestamp, selected, spread, navStatus])
 
   useEffect(() => {
     let raf = 0
@@ -58,7 +72,7 @@ export default function RiderMarker({ rider, selected, onSelect, spread }: Rider
     <Marker
       ref={markerRef}
       position={[rider.latitude, rider.longitude]}
-      icon={buildRiderIcon(rider.accent, rider.isMe ?? false, selected, presenceFor(rider.timestamp), spread)}
+      icon={buildRiderIcon(rider.accent, rider.isMe ?? false, selected, presenceFor(rider.timestamp), initial, spread, navStatus)}
       zIndexOffset={selected ? 1000 : rider.isMe ? 500 : 0}
       eventHandlers={{ click: () => onSelect(rider.userId) }}
     />

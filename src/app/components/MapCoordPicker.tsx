@@ -14,7 +14,7 @@ interface MapCoordPickerProps {
 }
 
 const DEFAULT_CENTER: [number, number] = [20.5937, 78.9629]
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=cb1_301r_1_f6fdb309731a70f7b980fb6c'
 const TILE_ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO'
 
 const PIN_ICON = divIcon({

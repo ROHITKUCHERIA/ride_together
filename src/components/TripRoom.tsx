@@ -164,6 +164,7 @@ export default function TripRoom({
               trip={thisTrip}
               mapRoute={mapRoute}
               roster={riders}
+              createdBy={apiTrip?.createdBy}
               onClose={() => setMapOpen(false)}
               onExitToMusic={handleOpenMusic}
               onExitToPlaylists={handleOpenPlaylists}

@@ -123,7 +123,7 @@ export class TripMusicService {
       if (isUniqueViolation(err)) {
         throw new ApiException(
           HttpStatus.CONFLICT,
-          'This song is already in the trip\'s music.',
+          "This song is already in the trip's music.",
           ErrorCodes.SONG_ALREADY_ADDED,
         );
       }
@@ -148,7 +148,7 @@ export class TripMusicService {
     if (!tripSong) {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
-        'This song is not in the trip\'s music.',
+        "This song is not in the trip's music.",
         ErrorCodes.TRIP_NOT_FOUND,
       );
     }

@@ -44,17 +44,31 @@ const TRIP_SONG_ROW = {
 describe('TripMusicService', () => {
   it('search requires membership and delegates to YouTube', async () => {
     const { prisma, access, youtube } = makeMocks();
-    const svc = new TripMusicService(prisma as never, access as never, youtube as never);
-    youtube.searchVideos.mockResolvedValue({ items: [], nextPageToken: null, cached: false });
+    const svc = new TripMusicService(
+      prisma as never,
+      access as never,
+      youtube as never,
+    );
+    youtube.searchVideos.mockResolvedValue({
+      items: [],
+      nextPageToken: null,
+      cached: false,
+    });
 
     await svc.search('trip-1', 'user-1', 'arijit singh', 'CAoQAA');
     expect(access.requireMember).toHaveBeenCalledWith('trip-1', 'user-1');
-    expect(youtube.searchVideos).toHaveBeenCalledWith('arijit singh', { pageToken: 'CAoQAA' });
+    expect(youtube.searchVideos).toHaveBeenCalledWith('arijit singh', {
+      pageToken: 'CAoQAA',
+    });
   });
 
   it('listLibrary requires membership and maps rows', async () => {
     const { prisma, access } = makeMocks();
-    const svc = new TripMusicService(prisma as never, access as never, {} as never);
+    const svc = new TripMusicService(
+      prisma as never,
+      access as never,
+      {} as never,
+    );
     prisma.tripSong.findMany.mockResolvedValue([TRIP_SONG_ROW]);
 
     const items = await svc.listLibrary('trip-1', 'user-1');
@@ -73,10 +87,16 @@ describe('TripMusicService', () => {
   describe('addSong', () => {
     it('rejects an invalid video id before touching the DB', async () => {
       const { prisma, access, youtube } = makeMocks();
-      const svc = new TripMusicService(prisma as never, access as never, youtube as never);
+      const svc = new TripMusicService(
+        prisma as never,
+        access as never,
+        youtube as never,
+      );
       youtube.isValidVideoId.mockReturnValue(false);
 
-      await expect(svc.addSong('trip-1', 'user-1', 'bad-id')).rejects.toMatchObject({
+      await expect(
+        svc.addSong('trip-1', 'user-1', 'bad-id'),
+      ).rejects.toMatchObject({
         errorCode: ErrorCodes.YOUTUBE_VIDEO_NOT_FOUND,
       });
       expect(prisma.song.findUnique).not.toHaveBeenCalled();
@@ -84,7 +104,11 @@ describe('TripMusicService', () => {
 
     it('creates the Song (from YouTube details) and links it to the trip', async () => {
       const { prisma, access, youtube } = makeMocks();
-      const svc = new TripMusicService(prisma as never, access as never, youtube as never);
+      const svc = new TripMusicService(
+        prisma as never,
+        access as never,
+        youtube as never,
+      );
       youtube.isValidVideoId.mockReturnValue(true);
       prisma.song.findUnique.mockResolvedValue(null);
       youtube.getVideoDetails.mockResolvedValue({
@@ -122,7 +146,11 @@ describe('TripMusicService', () => {
 
     it('reuses an existing Song (no YouTube validation call)', async () => {
       const { prisma, access, youtube } = makeMocks();
-      const svc = new TripMusicService(prisma as never, access as never, youtube as never);
+      const svc = new TripMusicService(
+        prisma as never,
+        access as never,
+        youtube as never,
+      );
       youtube.isValidVideoId.mockReturnValue(true);
       prisma.song.findUnique.mockResolvedValue(SONG_ROW);
       prisma.tripSong.create.mockResolvedValue(TRIP_SONG_ROW);
@@ -134,25 +162,37 @@ describe('TripMusicService', () => {
 
     it('rejects when the video cannot be found on YouTube', async () => {
       const { prisma, access, youtube } = makeMocks();
-      const svc = new TripMusicService(prisma as never, access as never, youtube as never);
+      const svc = new TripMusicService(
+        prisma as never,
+        access as never,
+        youtube as never,
+      );
       youtube.isValidVideoId.mockReturnValue(true);
       prisma.song.findUnique.mockResolvedValue(null);
       youtube.getVideoDetails.mockResolvedValue(null);
 
-      await expect(svc.addSong('trip-1', 'user-1', 'dQw4w9WgXcQ')).rejects.toMatchObject({
+      await expect(
+        svc.addSong('trip-1', 'user-1', 'dQw4w9WgXcQ'),
+      ).rejects.toMatchObject({
         errorCode: ErrorCodes.YOUTUBE_VIDEO_NOT_FOUND,
       });
     });
 
     it('returns a friendly duplicate error on a unique violation (race-safe)', async () => {
       const { prisma, access, youtube } = makeMocks();
-      const svc = new TripMusicService(prisma as never, access as never, youtube as never);
+      const svc = new TripMusicService(
+        prisma as never,
+        access as never,
+        youtube as never,
+      );
       youtube.isValidVideoId.mockReturnValue(true);
       prisma.song.findUnique.mockResolvedValue(SONG_ROW);
       const dup = Object.assign(new Error('dup'), { code: 'P2002' });
       prisma.tripSong.create.mockRejectedValue(dup);
 
-      await expect(svc.addSong('trip-1', 'user-1', 'dQw4w9WgXcQ')).rejects.toMatchObject({
+      await expect(
+        svc.addSong('trip-1', 'user-1', 'dQw4w9WgXcQ'),
+      ).rejects.toMatchObject({
         status: 409,
         errorCode: ErrorCodes.SONG_ALREADY_ADDED,
       });
@@ -162,28 +202,53 @@ describe('TripMusicService', () => {
   describe('removeSong', () => {
     it('lets an OWNER remove any song', async () => {
       const { prisma, access } = makeMocks();
-      const svc = new TripMusicService(prisma as never, access as never, {} as never);
+      const svc = new TripMusicService(
+        prisma as never,
+        access as never,
+        {} as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'OWNER' });
-      prisma.tripSong.findFirst.mockResolvedValue({ id: 'ts-1', addedByUserId: 'someone-else' });
+      prisma.tripSong.findFirst.mockResolvedValue({
+        id: 'ts-1',
+        addedByUserId: 'someone-else',
+      });
 
       await svc.removeSong('trip-1', 'user-owner', 'song-1');
-      expect(prisma.tripSong.delete).toHaveBeenCalledWith({ where: { id: 'ts-1' } });
+      expect(prisma.tripSong.delete).toHaveBeenCalledWith({
+        where: { id: 'ts-1' },
+      });
     });
 
     it('lets an ADMIN remove any song', async () => {
       const { prisma, access } = makeMocks();
-      const svc = new TripMusicService(prisma as never, access as never, {} as never);
+      const svc = new TripMusicService(
+        prisma as never,
+        access as never,
+        {} as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'ADMIN' });
-      prisma.tripSong.findFirst.mockResolvedValue({ id: 'ts-1', addedByUserId: 'someone-else' });
+      prisma.tripSong.findFirst.mockResolvedValue({
+        id: 'ts-1',
+        addedByUserId: 'someone-else',
+      });
 
-      await expect(svc.removeSong('trip-1', 'admin', 'song-1')).resolves.toBeUndefined();
+      await expect(
+        svc.removeSong('trip-1', 'admin', 'song-1'),
+      ).resolves.toBeUndefined();
     });
 
     it('lets a MEMBER remove only their own add', async () => {
       const { prisma, access } = makeMocks();
-      const svc = new TripMusicService(prisma as never, access as never, {} as never);
+      const svc = new TripMusicService(
+        prisma as never,
+        access as never,
+        {} as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
-      prisma.tripSong.findFirst.mockResolvedValue({ id: 'ts-1', addedByUserId: 'user-member' });
+      prisma.tripSong.findFirst.mockResolvedValue({
+        id: 'ts-1',
+        addedByUserId: 'user-member',
+      });
 
       await svc.removeSong('trip-1', 'user-member', 'song-1');
       expect(prisma.tripSong.delete).toHaveBeenCalled();
@@ -191,11 +256,20 @@ describe('TripMusicService', () => {
 
     it('blocks a MEMBER removing someone else\u2019s add', async () => {
       const { prisma, access } = makeMocks();
-      const svc = new TripMusicService(prisma as never, access as never, {} as never);
+      const svc = new TripMusicService(
+        prisma as never,
+        access as never,
+        {} as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'MEMBER' });
-      prisma.tripSong.findFirst.mockResolvedValue({ id: 'ts-1', addedByUserId: 'other-user' });
+      prisma.tripSong.findFirst.mockResolvedValue({
+        id: 'ts-1',
+        addedByUserId: 'other-user',
+      });
 
-      await expect(svc.removeSong('trip-1', 'user-member', 'song-1')).rejects.toMatchObject({
+      await expect(
+        svc.removeSong('trip-1', 'user-member', 'song-1'),
+      ).rejects.toMatchObject({
         status: 403,
         errorCode: ErrorCodes.TRIP_PERMISSION_DENIED,
       });
@@ -204,23 +278,39 @@ describe('TripMusicService', () => {
 
     it('returns 404 when the song is not in this trip', async () => {
       const { prisma, access } = makeMocks();
-      const svc = new TripMusicService(prisma as never, access as never, {} as never);
+      const svc = new TripMusicService(
+        prisma as never,
+        access as never,
+        {} as never,
+      );
       access.requireMember.mockResolvedValue({ role: 'OWNER' });
       prisma.tripSong.findFirst.mockResolvedValue(null);
 
-      await expect(svc.removeSong('trip-1', 'owner', 'song-9')).rejects.toMatchObject({
+      await expect(
+        svc.removeSong('trip-1', 'owner', 'song-9'),
+      ).rejects.toMatchObject({
         status: 404,
       });
     });
 
     it('rejects a non-member (membership check is authoritative)', async () => {
       const { prisma, access } = makeMocks();
-      const svc = new TripMusicService(prisma as never, access as never, {} as never);
+      const svc = new TripMusicService(
+        prisma as never,
+        access as never,
+        {} as never,
+      );
       access.requireMember.mockRejectedValue(
-        new ApiException(404, 'Trip not found or you are not a member.', ErrorCodes.TRIP_NOT_FOUND),
+        new ApiException(
+          404,
+          'Trip not found or you are not a member.',
+          ErrorCodes.TRIP_NOT_FOUND,
+        ),
       );
 
-      await expect(svc.removeSong('trip-1', 'outsider', 'song-1')).rejects.toMatchObject({
+      await expect(
+        svc.removeSong('trip-1', 'outsider', 'song-1'),
+      ).rejects.toMatchObject({
         status: 404,
       });
       expect(prisma.tripSong.findFirst).not.toHaveBeenCalled();

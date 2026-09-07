@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as authApi from '../api/auth'
 import { setSessionExpiredHandler } from '../lib/apiClient'
+import { isApiError } from '../lib/errors'
 import { clearTokens, getRefreshToken } from '../lib/tokens'
 import type { User } from '../types/api'
 
@@ -50,9 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(me)
         setStatus('authenticated')
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (cancelled) return
-        clearTokens()
+        // Only an auth rejection proves the session is dead. A network error
+        // (offline reload, cold-start timeout) must never delete a possibly
+        // valid refresh token — the next boot or login retries it.
+        if (isApiError(err) && err.status === 401) clearTokens()
         setUser(null)
         setStatus('unauthenticated')
       })
@@ -63,10 +67,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string): Promise<User> => {
     await authApi.login(email, password)
-    const me = await authApi.fetchMe()
-    setUser(me)
-    setStatus('authenticated')
-    return me
+    try {
+      const me = await authApi.fetchMe()
+      setUser(me)
+      setStatus('authenticated')
+      return me
+    } catch (err) {
+      // /login issued tokens but /me failed (stale-flow wipe, network blip):
+      // never leave a half-logged-in token pair behind — the next attempt
+      // starts from a clean slate instead of a zombie session.
+      clearTokens()
+      throw err
+    }
   }, [])
 
   const register = useCallback(async (name: string, email: string, password: string): Promise<User> => {

@@ -25,17 +25,15 @@ const fakeYouTube = {
   }),
   isValidVideoId: (id: unknown): id is string =>
     typeof id === 'string' && /^[A-Za-z0-9_-]{11}$/.test(id),
-  getVideoDetails: jest
-    .fn()
-    .mockImplementation((videoId: string) =>
-      Promise.resolve({
-        videoId,
-        title: `Song ${videoId}`,
-        channelTitle: 'Test Channel',
-        thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
-        durationSeconds: 200,
-      }),
-    ),
+  getVideoDetails: jest.fn().mockImplementation((videoId: string) =>
+    Promise.resolve({
+      videoId,
+      title: `Song ${videoId}`,
+      channelTitle: 'Test Channel',
+      thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+      durationSeconds: 200,
+    }),
+  ),
 };
 
 describe('Trip Music (e2e)', () => {

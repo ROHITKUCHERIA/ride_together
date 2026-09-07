@@ -2,7 +2,8 @@ import { trip, destinationCoord } from '../../../data/mockData'
 import type { Rider, TripInfo } from '../../../types'
 import type { LocationUpdate, RiderLocation, RealtimeConnection } from '../types'
 import { BrowserLocationService } from './LocationService'
-import type { LocationService, RealtimeService } from './RealtimeService'
+import type { DestinationUpdatedPayload, LocationService, RealtimeService } from './RealtimeService'
+import type { NavigationSessionPayload } from '../../navigation/types'
 import {
   MOCK_RECONNECT_AT_MS,
   MOCK_RECONNECT_DURATION_MS,
@@ -99,6 +100,8 @@ export class MockRealtimeService implements RealtimeService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private riderListener: ((riders: RiderLocation[]) => void) | null = null
   private connectionListener: ((state: RealtimeConnection) => void) | null = null
+  private groupNavListener: ((event: string, payload: NavigationSessionPayload) => void) | null = null
+  private destinationListener: ((payload: DestinationUpdatedPayload) => void) | null = null
   private lastTickAt = 0
   private meOverride: { lat: number; lng: number; speed: number | null; heading: number | null } | null = null
 
@@ -119,6 +122,7 @@ export class MockRealtimeService implements RealtimeService {
       this.tick = setInterval(() => this.onTick(), MOCK_RIDER_TICK_MS)
       this.onTick()
       this.scheduleReconnect()
+      this.emitMockGroupNav()
     }, MOCK_REALTIME_CONNECT_DELAY_MS)
   }
 
@@ -143,6 +147,44 @@ export class MockRealtimeService implements RealtimeService {
     return () => {
       if (this.connectionListener === listener) this.connectionListener = null
     }
+  }
+
+  /** Demo group-nav broadcasts: a destination + a simulated "me" session. */
+  onGroupNavEvent(listener: (event: string, payload: NavigationSessionPayload) => void): () => void {
+    this.groupNavListener = listener
+    return () => {
+      if (this.groupNavListener === listener) this.groupNavListener = null
+    }
+  }
+
+  onTripDestination(listener: (payload: DestinationUpdatedPayload) => void): () => void {
+    this.destinationListener = listener
+    return () => {
+      if (this.destinationListener === listener) this.destinationListener = null
+    }
+  }
+
+  /** Simulated group navigation state so the demo UI shows a live group ETA. */
+  private emitMockGroupNav(): void {
+    this.destinationListener?.({
+      tripId: trip.id,
+      destination: {
+        latitude: destinationCoord[0],
+        longitude: destinationCoord[1],
+        name: 'Goa',
+      },
+    })
+    const me = trip.riders.find((r) => r.isMe)
+    if (!me) return
+    this.groupNavListener?.('navigation:started', {
+      tripId: trip.id,
+      userId: me.id,
+      mode: 'group',
+      status: 'navigating',
+      distanceRemainingMeters: 420_000,
+      eta: Date.now() + 7.5 * 60 * 60 * 1000,
+      updatedAt: new Date().toISOString(),
+    })
   }
 
   publishLocation(update: LocationUpdate): void {

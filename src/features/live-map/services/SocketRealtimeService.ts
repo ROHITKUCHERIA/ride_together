@@ -3,8 +3,19 @@ import { API_URL } from '../config'
 import type { LocationUpdate, RiderLocation, RealtimeConnection } from '../types'
 import type { JamDeletedPayload, JamStatePayload } from '../../../types/jam'
 import { BrowserLocationService } from './LocationService'
-import type { LocationService, RealtimeService } from './RealtimeService'
+import type { DestinationUpdatedPayload, LocationService, RealtimeService } from './RealtimeService'
 import { ensureAuthContext, type AuthContext } from './backend'
+import type { NavigationSessionPayload } from '../../navigation/types'
+
+const GROUP_NAV_EVENTS = [
+  'navigation:started',
+  'navigation:stopped',
+  'navigation:rerouting',
+  'navigation:rerouted',
+  'navigation:arrived',
+  'navigation:gps-lost',
+  'navigation:status',
+] as const
 
 const ACCENTS = [
   '#ff6b2c',
@@ -66,6 +77,10 @@ export class SocketRealtimeService implements RealtimeService {
   private jamStateListener: ((state: JamStatePayload) => void) | null = null
   private jamDeletedListener: ((payload: JamDeletedPayload) => void) | null = null
   private jamErrorListener: ((err: { code?: string; message?: string }) => void) | null = null
+
+  /** Group navigation listeners — ride the same single connection as GPS + Jam. */
+  private groupNavListener: ((event: string, payload: NavigationSessionPayload) => void) | null = null
+  private destinationListener: ((payload: DestinationUpdatedPayload) => void) | null = null
 
   constructor(options: SocketRealtimeOptions = {}) {
     this.tripIdOverride = options.tripId
@@ -160,6 +175,15 @@ export class SocketRealtimeService implements RealtimeService {
     s.on('jam:state', (state: JamStatePayload) => this.jamStateListener?.(state))
     s.on('jam:deleted', (payload: JamDeletedPayload) => this.jamDeletedListener?.(payload))
     s.on('jam:error', (err: { code?: string; message?: string }) => this.jamErrorListener?.(err))
+
+    // Group navigation — the Host destination is pushed verbatim, and every
+    // navigation:* payload is forwarded with its event name so the store can
+    // discriminate stopped (removal) from regular transitions (upsert).
+    s.on('trip:destination-updated', (payload: DestinationUpdatedPayload) => this.destinationListener?.(payload))
+    s.on('trip:destination-cleared', (payload: DestinationUpdatedPayload) => this.destinationListener?.(payload))
+    for (const event of GROUP_NAV_EVENTS) {
+      s.on(event, (payload: NavigationSessionPayload) => this.groupNavListener?.(event, payload))
+    }
   }
 
   private mapRider(r: ServerRider): void {
@@ -278,6 +302,22 @@ export class SocketRealtimeService implements RealtimeService {
     const s = this.socket
     if (!s || !s.connected) return
     s.emit(event, payload)
+  }
+
+  /** Subscribes to group navigation broadcasts (`navigation:*`, same socket). */
+  onGroupNavEvent(listener: (event: string, payload: NavigationSessionPayload) => void): () => void {
+    this.groupNavListener = listener
+    return () => {
+      if (this.groupNavListener === listener) this.groupNavListener = null
+    }
+  }
+
+  /** Subscribes to shared destination broadcasts (Host set/update/clear). */
+  onTripDestination(listener: (payload: DestinationUpdatedPayload) => void): () => void {
+    this.destinationListener = listener
+    return () => {
+      if (this.destinationListener === listener) this.destinationListener = null
+    }
   }
 
   private setConnection(state: RealtimeConnection): void {

@@ -63,7 +63,9 @@ export class JamController {
 
   @Post(':jamId/control')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Host-only playback control (play/pause/seek/song)' })
+  @ApiOperation({
+    summary: 'Host-only playback control (play/pause/seek/song)',
+  })
   control(
     @Param('jamId', new ParseUUIDPipe()) jamId: string,
     @CurrentUser() user: AuthenticatedUser,

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import AuthShell from '../AuthShell'
 import Button from '../../components/ui/Button'
@@ -22,6 +22,9 @@ export default function Login() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Ref guard: state lags the event loop, so rapid Enter/double-tap would fire
+  // parallel /login calls (duplicate sessions + throttle burn) without this.
+  const submittingRef = useRef(false)
 
   if (status === 'authenticated') return <Navigate to={from} replace />
 
@@ -38,13 +41,18 @@ export default function Login() {
     e.preventDefault()
     setFormError(null)
     if (!validate()) return
+    if (submittingRef.current) return
+    submittingRef.current = true
     setSubmitting(true)
     try {
       await login(email.trim(), password)
       navigate(from, { replace: true })
     } catch (err) {
-      setFormError(isApiError(err) ? err.message : 'Unable to sign in. Please try again.')
+      // Keep the specific network/timeout message (cold-start wake-ups,
+      // offline) instead of swallowing it into a generic failure.
+      setFormError(isApiError(err) || err instanceof Error ? err.message : 'Unable to sign in. Please try again.')
     } finally {
+      submittingRef.current = false
       setSubmitting(false)
     }
   }

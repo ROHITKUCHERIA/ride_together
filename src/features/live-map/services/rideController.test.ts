@@ -19,6 +19,8 @@ const socketDoubles = vi.hoisted(() => {
     publishLocation: vi.fn(),
     onRiderLocations: vi.fn(),
     onConnectionState: vi.fn<(listener: (state: RealtimeConnection) => void) => () => void>(() => () => {}),
+    onGroupNavEvent: vi.fn(() => () => {}),
+    onTripDestination: vi.fn(() => () => {}),
     locationServiceStart: vi.fn<(callbacks: StartCallbacks) => () => void>(() => () => {}),
     setIdentity: (v: { userId: string; tripId: string } | null) => {
       state.identity = v
@@ -34,6 +36,8 @@ const mockDoubles = vi.hoisted(() => ({
   publishLocation: vi.fn(),
   onRiderLocations: vi.fn(),
   onConnectionState: vi.fn<(listener: (state: RealtimeConnection) => void) => () => void>(() => () => {}),
+  onGroupNavEvent: vi.fn(() => () => {}),
+  onTripDestination: vi.fn(() => () => {}),
   locationServiceStart: vi.fn<(callbacks: StartCallbacks) => () => void>(() => () => {}),
 }))
 
@@ -51,6 +55,8 @@ vi.mock('./SocketRealtimeService', () => {
     publishLocation: socketDoubles.publishLocation,
     onRiderLocations: socketDoubles.onRiderLocations,
     onConnectionState: socketDoubles.onConnectionState,
+    onGroupNavEvent: socketDoubles.onGroupNavEvent,
+    onTripDestination: socketDoubles.onTripDestination,
   })
   return { SocketRealtimeService }
 })
@@ -66,6 +72,8 @@ vi.mock('./MockRealtimeService', () => {
     publishLocation: mockDoubles.publishLocation,
     onRiderLocations: mockDoubles.onRiderLocations,
     onConnectionState: mockDoubles.onConnectionState,
+    onGroupNavEvent: mockDoubles.onGroupNavEvent,
+    onTripDestination: mockDoubles.onTripDestination,
   })
   return { MockRealtimeService }
 })

@@ -304,7 +304,10 @@ describe('Jam (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post(`/api/jam/${jamId}/control`)
         .set('Authorization', `Bearer ${tokens.host}`)
-        .send({ action: 'song_changed', songId: '11111111-1111-1111-1111-111111111111' });
+        .send({
+          action: 'song_changed',
+          songId: '11111111-1111-1111-1111-111111111111',
+        });
       expect(res.status).toBe(400);
     });
 

@@ -5,6 +5,7 @@ import FullPageLoader from '../../components/ui/FullPageLoader'
 import ErrorState from '../../components/ui/ErrorState'
 import Button from '../../components/ui/Button'
 import { getTrip, getTripMembers } from '../../api/trips'
+import { hasTripChanged, haveMembersChanged } from './tripRoomPolling'
 import { useAuth } from '../../auth/AuthContext'
 import { toDemoTrip, tripMapRoute } from '../tripInfo'
 import type { MemberRole, Trip, TripMember } from '../../types/api'
@@ -25,6 +26,11 @@ export default function TripRoomPage() {
   // Guards against overlapping refresh requests when the backend is slow — a
   // poll tick is skipped while the previous one is still in flight.
   const inFlightRef = useRef(false)
+  // Last applied snapshots — the poll skips setState while the payload is
+  // identical, keeping every downstream identity (derived trip, route,
+  // roster) stable so the map never refits on a no-op cycle.
+  const tripSnapRef = useRef<Trip | null>(null)
+  const membersSnapRef = useRef<TripMember[]>([])
 
   const fetchRoom = useCallback(async (): Promise<void> => {
     if (!tripId || inFlightRef.current) return
@@ -37,8 +43,14 @@ export default function TripRoomPage() {
         getTrip(tripId, { quiet: true }),
         getTripMembers(tripId, { quiet: true }),
       ])
-      if (t) setTrip(t)
-      if (Array.isArray(m)) setMembers(m)
+      if (t && hasTripChanged(tripSnapRef.current, t)) {
+        tripSnapRef.current = t
+        setTrip(t)
+      }
+      if (Array.isArray(m) && haveMembersChanged(membersSnapRef.current, m)) {
+        membersSnapRef.current = m
+        setMembers(m)
+      }
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load this trip.')

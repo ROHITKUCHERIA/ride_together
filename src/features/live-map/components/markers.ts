@@ -1,8 +1,15 @@
 import { divIcon } from 'leaflet'
 import type { RiderPresence } from '../types'
 
-const BIKE_ICON =
-  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>'
+/** First visible character of a rider name, uppercased — the marker identity. */
+export function riderInitial(name: string): string {
+  const first = Array.from(name.trim())[0]
+  return first ? first.toUpperCase() : '?'
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
 
 const PRESENCE_RING: Record<RiderPresence, string> = {
   live: 'rgba(61,220,132,0.55)',
@@ -11,18 +18,31 @@ const PRESENCE_RING: Record<RiderPresence, string> = {
   offline: 'rgba(148,148,158,0.45)',
 }
 
+/** Group navigation status → badge dot colour (drawn over the rider marker). */
+export const NAV_STATUS_COLORS: Record<string, string> = {
+  navigating: '#3ddc84',
+  off_route: '#ffb14d',
+  rerouting: '#4dc4ff',
+  arrived: '#c084fc',
+  gps_lost: '#ff6b2c',
+  offline: '#94949e',
+  idle: '#94949e',
+}
+
 export function buildRiderIcon(
   accent: string,
   isMe: boolean,
   selected: boolean,
   presence: RiderPresence,
+  initial: string,
   spread?: [number, number],
+  navStatus?: string,
 ): L.DivIcon {
   /* Uniform size for every rider — presence and “me” differ via halo/border,
-     never via physical footprint. */
+     never via physical footprint. The initial identifies the rider at a
+     glance (heading direction is shown by the navigation blue dot instead). */
   const size = 36
   const dot = size - 4
-  const iconHeight = Math.round(dot * 0.5)
   const ringColor = selected ? '#ff6b2c' : PRESENCE_RING[presence]
   const borderColor = selected ? '#ff6b2c' : isMe ? 'rgba(61,220,132,0.95)' : 'rgba(255,255,255,0.9)'
 
@@ -39,9 +59,19 @@ export function buildRiderIcon(
     ? `<span style="position:absolute;inset:-6px;border-radius:50%;border:2px solid #ff6b2c;box-shadow:0 0 0 3px rgba(255,107,44,0.22);"></span>`
     : ''
 
-  const bike = BIKE_ICON.replace('width="15"', `width="${iconHeight}"`).replace('height="15"', `height="${iconHeight}"`)
+  // Group navigation badge: a crisp dot at the marker's top-right. It never
+  // replaces presence (which stays course-grained via the ring) — it overlays
+  // the finer-grained navigation state (off_route, arrived, gps_lost, …).
+  const navBadge =
+    navStatus && NAV_STATUS_COLORS[navStatus]
+      ? `<span style="position:absolute;top:-3px;right:-3px;width:13px;height:13px;border-radius:50%;background:${NAV_STATUS_COLORS[navStatus]};border:2px solid #0a0a0c;box-shadow:0 2px 6px rgba(0,0,0,0.5);z-index:3;"></span>`
+      : ''
 
-  const html = `<div class="rt-rider-marker" style="position:relative;width:${size}px;height:${size}px;display:grid;place-items:center;${translate}">${halo}${ring}<div style="width:${dot}px;height:${dot}px;border-radius:50%;display:grid;place-items:center;border:2px solid ${borderColor};background:${accent};box-shadow:0 6px 14px -4px rgba(0,0,0,0.55);transition:transform .2s;">${bike}</div></div>`
+  // Rider identity: first letter of the name on the accent disc, so a crowded
+  // map reads instantly (Asha = A, Dev = D, …).
+  const inner = `<span style="font-family:Inter,system-ui,sans-serif;font-size:15px;font-weight:800;line-height:1;color:#ffffff;text-shadow:0 1px 3px rgba(0,0,0,0.5);user-select:none;">${escapeHtml(initial)}</span>`
+
+  const html = `<div class="rt-rider-marker" style="position:relative;width:${size}px;height:${size}px;display:grid;place-items:center;${translate}">${halo}${ring}${navBadge}<div style="width:${dot}px;height:${dot}px;border-radius:50%;display:grid;place-items:center;border:2px solid ${borderColor};background:${accent};box-shadow:0 6px 14px -4px rgba(0,0,0,0.55);transition:transform .2s;">${inner}</div></div>`
   return divIcon({
     className: 'rt-pin-wrap',
     html,
